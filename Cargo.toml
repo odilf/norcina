@@ -1,0 +1,8 @@
+[package]
+name = "barbaroja"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+owo-colors = "4.2.0"
+quickcheck = "1.0.3"
