@@ -76,11 +76,18 @@ impl Cube {
         }
     }
 
-    pub fn mov(self, mov: Move) -> Self {
+    pub fn mov_single(self, mov: Move) -> Self {
         Self {
             corners: corner::move_pieces(self.corners, mov),
             edges: edge::move_pieces(self.edges, mov),
         }
+    }
+
+    pub fn mov(mut self, alg: impl IntoIterator<Item = Move>) -> Self {
+        for mov in alg {
+            self = self.mov_single(mov);
+        }
+        self
     }
 }
 

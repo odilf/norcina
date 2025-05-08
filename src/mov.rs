@@ -28,6 +28,7 @@ impl Amount {
 impl ops::Mul<Direction> for Amount {
     type Output = Amount;
     fn mul(self, rhs: Direction) -> Self::Output {
+        // TODO: Is it possible to remove this branch?
         match rhs {
             Direction::Positive => self,
             Direction::Negative => Self::from_u8(4 - self.u8()),
@@ -48,19 +49,6 @@ impl Move {
         }
     }
 
-    pub const R: Self = Move::new(Face::R, Amount::Single);
-    pub const R2: Self = Move::new(Face::R, Amount::Double);
-    pub const U: Self = Move::new(Face::U, Amount::Single);
-    pub const U2: Self = Move::new(Face::U, Amount::Double);
-    pub const F: Self = Move::new(Face::F, Amount::Single);
-    pub const F2: Self = Move::new(Face::F, Amount::Double);
-    pub const L: Self = Move::new(Face::L, Amount::Single);
-    pub const L2: Self = Move::new(Face::L, Amount::Double);
-    pub const D: Self = Move::new(Face::D, Amount::Single);
-    pub const D2: Self = Move::new(Face::D, Amount::Double);
-    pub const B: Self = Move::new(Face::B, Amount::Single);
-    pub const B2: Self = Move::new(Face::B, Amount::Double);
-
     pub const fn face(self) -> Face {
         Face::from_u8(self.data & 0b11)
     }
@@ -70,16 +58,71 @@ impl Move {
     }
 }
 
+#[macro_export]
+macro_rules! alg {
+    (@ $mov:tt) => { $mov };
+
+    ($($mov:tt)*) => {{
+        use $crate::mov::moves::*;
+        [$(alg!(@ $mov)),*]
+    }};
+
+}
+
+pub mod moves {
+    macro_rules! generate_moves {
+        // ($face:ident, $amount:ident, $amount_name:tt) => {
+        //     pub const $face: Move = Move::new($face, $amount);
+        // };
+
+        // ($face:ident, [$($amounts:ident)*], [$($amount_names:tt)*]) => {
+        //     $(
+        //         generate_moves!($face, $amounts, $amount_names);
+        //     )*
+        // };
+        (@amount 1) => { Amount::Single };
+        (@amount 2) => { Amount::Double };
+        (@amount 3) => { Amount::Reverse };
+
+        (@face R) => { Face::R };
+        (@face U) => { Face::U };
+        (@face F) => { Face::F };
+        (@face L) => { Face::L };
+        (@face D) => { Face::D };
+        (@face B) => { Face::B };
+
+        ([$($face:tt $amount:tt $name:ident),*]) => {
+            $(
+                pub const $name: Move = Move::new(
+                    generate_moves!(@face $face),
+                    generate_moves!(@amount $amount)
+                );
+            )*
+        };
+    }
+
+    use super::Amount;
+    use super::Face;
+    use super::Move;
+
+    generate_moves!([
+        R 1 R, R 2 R2, R 3 RP,
+        U 1 U, U 2 U2, U 3 UP,
+        F 1 F, F 2 F2, F 3 FP,
+        L 1 L, L 2 L2, L 3 LP,
+        D 1 D, D 2 D2, D 3 DP,
+        B 1 B, B 2 B2, B 3 BP
+    ]);
+}
+
 #[cfg(test)]
 mod tests {
     use crate::cube::Cube;
-
-    use super::*;
     use quickcheck::quickcheck;
 
     quickcheck! {
-        fn fn_r4_identity(cube: Cube) -> bool {
-            cube.mov(Move::R2).mov(Move::R2) == cube
+        fn fn_r2r2_identity(cube: Cube) -> bool {
+            cube.mov(alg!(R2 R2)) == cube
         }
     }
 }
