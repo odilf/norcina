@@ -173,7 +173,8 @@ pub fn move_pieces(edges: [Edge; 12], mov: Move) -> [Edge; 12] {
         }
 
         if !matches!(mov.amount(), Amount::Double) {
-            todo!();
+            return edges[i];
+            // todo!();
         }
 
         edges[(i ^ (0b1 << other_axis_offset)) as usize]

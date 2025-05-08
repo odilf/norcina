@@ -105,14 +105,27 @@ pub fn move_pieces(corners: [Corner; 8], mov: Move) -> [Corner; 8] {
     array::from_fn(|i| {
         let position = CornerPosition::from_index(i as u8);
         if !position.contains_face(mov.face()) {
-            return corners[i];
+            return position.pick(corners);
         }
 
-        if !matches!(mov.amount(), Amount::Double) {
-            todo!();
-        }
-        let mask = 0b111 ^ mask;
-        corners[(i ^ mask) as usize]
+        // TODO: Maybe this should be a method in position?
+        let i = match mov.amount() {
+            Amount::Single => {
+                let a = 2;
+                let b = 1;
+                let temp = ((i >> a) ^ (i >> b)) & 0b1;
+                i ^ ((temp << a) | ((temp ^ 0b1) << b))
+            }
+            Amount::Double => i ^ (0b111 ^ mask),
+            Amount::Reverse => {
+                let a = 2;
+                let b = 1;
+                let temp = ((i >> a) ^ (i >> b)) & 0b1;
+                i ^ (((temp ^ 0b1) << a) | (temp << b))
+            }
+        };
+
+        corners[i as usize]
     })
 }
 

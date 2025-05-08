@@ -2,6 +2,7 @@ use std::ops;
 
 use crate::math::{Direction, Face};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Amount {
     Single = 1,
     Double = 2,
@@ -38,23 +39,23 @@ impl ops::Mul<Direction> for Amount {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Move {
-    /// Packed field: `----aaff`
+    /// Packed field: `---aafff`
     data: u8,
 }
 
 impl Move {
     pub const fn new(face: Face, amount: Amount) -> Move {
         Self {
-            data: face.u8() + amount.u8() << 2,
+            data: face.u8() + (amount.u8() << 3),
         }
     }
 
     pub const fn face(self) -> Face {
-        Face::from_u8(self.data & 0b11)
+        Face::from_u8(self.data & 0b111)
     }
 
     pub const fn amount(self) -> Amount {
-        Amount::from_u8(self.data >> 2 & 0b11)
+        Amount::from_u8(self.data >> 3)
     }
 }
 
@@ -115,14 +116,58 @@ pub mod moves {
     ]);
 }
 
+pub mod algs {
+    use super::Move;
+
+    pub const SEXY: [Move; 4] = alg!(R U RP UP);
+    pub const SLEDGEHAMMER: [Move; 4] = alg!(RP F R FP);
+    pub const T: [Move; 14] = alg!(R U RP UP RP F R2 UP RP UP R U RP FP);
+    pub const J: [Move; 13] = alg!(R U RP F R U RP UP RP FP R2 UP RP);
+
+    pub const CHECKER: [Move; 6] = alg!(R2 L2 U2 D2 F2 B2);
+
+    // TODO: Concat or extend algs
+    // pub const J_AUF: [Move; 14] = [J, alg!(UP)].concat();
+}
+
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::cube::Cube;
-    use quickcheck::quickcheck;
+    use quickcheck::{quickcheck, Arbitrary, Gen};
+
+    impl Arbitrary for Amount {
+        fn arbitrary(g: &mut Gen) -> Self {
+            *g.choose(&[Amount::Single, Amount::Double, Amount::Reverse])
+                .unwrap()
+        }
+    }
+
+    impl Arbitrary for Move {
+        fn arbitrary(g: &mut Gen) -> Self {
+            let face = Face::arbitrary(g);
+            let amount = Amount::arbitrary(g);
+            Move::new(face, amount)
+        }
+    }
 
     quickcheck! {
-        fn fn_r2r2_identity(cube: Cube) -> bool {
-            cube.mov(alg!(R2 R2)) == cube
+        fn fn_move_constructor_and_accessors_maintain_values(face: Face, amount: Amount) -> bool {
+            let mov = Move::new(face, amount);
+            mov.face() == face && mov.amount() == amount
+        }
+
+        fn fn_double_double_identity(cube: Cube, face: Face) -> bool {
+            let mov = Move::new(face, Amount::Double);
+            cube.mov([mov, mov]) == cube
+        }
+
+        fn fn_rrp_identity(cube: Cube) -> bool {
+            cube.mov(alg!(R RP)) == cube
+        }
+
+        fn fn_double_t_identity(cube: Cube) -> bool {
+            cube.mov(alg!(R RP)) == cube
         }
     }
 }

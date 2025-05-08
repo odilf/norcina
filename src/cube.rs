@@ -189,7 +189,7 @@ impl fmt::Display for Cube {
 
 #[cfg(test)]
 mod tests {
-    use quickcheck::{quickcheck, Arbitrary, Gen};
+    use quickcheck::{Arbitrary, Gen};
 
     use super::*;
 
