@@ -1,6 +1,9 @@
+use std::{array, fmt};
+
 use crate::{
     cube::Sticker,
     math::{Axis, Direction, Face},
+    mov::{Amount, Move},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -48,35 +51,100 @@ impl Corner {
         ]
     }
 
-    pub fn oriented_from_faces(faces: [Face; 3]) -> Self {
-        let index = faces
-            .into_iter()
-            .map(|face| (face.direction().u8() << face.axis().u8()))
-            .sum();
-
-        Corner { data: index }
+    /// Whether the piece is on the given face.
+    #[inline]
+    pub fn on_face(self, face: Face) -> bool {
+        self.direction_on_axis(face.axis()) == face.direction()
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct CornerPosition(Corner);
+pub struct CornerPosition {
+    data: u8,
+}
 
 impl CornerPosition {
     pub fn from_faces(faces: [Face; 3]) -> Self {
+        assert!(
+            faces[0].axis() != faces[1].axis()
+                && faces[1].axis() != faces[2].axis()
+                && faces[2].axis() != faces[0].axis()
+        );
+
         let index = faces
             .into_iter()
             .map(|face| (face.direction().u8() << face.axis().u8()))
             .sum();
 
-        CornerPosition(Corner { data: index })
+        CornerPosition { data: index }
+    }
+
+    pub fn from_index(index: u8) -> Self {
+        assert!(index < 8);
+        CornerPosition { data: index }
     }
 
     pub fn pick(self, corners: [Corner; 8]) -> Corner {
-        corners[self.0.data as usize]
+        corners[self.data as usize]
+    }
+
+    fn contains_face(self, face: Face) -> bool {
+        (self.data >> face.axis().u8()) & 0b1 == face.direction().u8()
     }
 }
 
 pub fn sticker(corner: Corner, position: CornerPosition, face: Face) -> Sticker {
-    let axis = Axis::from_u8((face.axis().u8() + corner.orientation().u8()) % 3);
-    Face::new(axis, position.0.direction_on_axis(axis))
+    // TODO: Actually use orientation.
+    let axis = face.axis();
+    Face::new(axis, corner.direction_on_axis(axis))
+}
+
+pub fn move_pieces(corners: [Corner; 8], mov: Move) -> [Corner; 8] {
+    let mask = 0b1 << mov.face().axis().u8();
+
+    array::from_fn(|i| {
+        let position = CornerPosition::from_index(i as u8);
+        if !position.contains_face(mov.face()) {
+            return corners[i];
+        }
+
+        if !matches!(mov.amount(), Amount::Double) {
+            todo!();
+        }
+        let mask = 0b111 ^ mask;
+        corners[(i ^ mask) as usize]
+    })
+}
+
+impl fmt::Display for Corner {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let [a, b, c] = self.faces();
+        let o = self.orientation();
+        write!(f, "{a:?}{b:?}{c:?} ({o:?})")
+    }
+}
+
+impl fmt::Display for CornerPosition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let [a, b, c] = Corner { data: self.data }.faces();
+        write!(f, "{a:?}{b:?}{c:?}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use quickcheck::{Arbitrary, Gen};
+
+    use super::*;
+
+    impl Arbitrary for Corner {
+        fn arbitrary(g: &mut Gen) -> Self {
+            let x = Direction::arbitrary(g);
+            let y = Direction::arbitrary(g);
+            let z = Direction::arbitrary(g);
+            Corner {
+                data: (x.u8() << 0) + (y.u8() << 1) + (z.u8() << 2),
+            }
+        }
+    }
 }

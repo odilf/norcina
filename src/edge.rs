@@ -1,15 +1,29 @@
+use std::{array, fmt};
+
 use crate::{
     cube::Sticker,
     math::{Axis, Direction, Face},
+    mov::{Amount, Move},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Edge {
     /// Packed field `---onnba`
+    // TODO: Try masked version: `-ommmzyx`
     data: u8,
 }
 
 impl Edge {
+    #[inline]
+    pub const fn a(self) -> Direction {
+        Direction::from_bool(self.data & 0b01 != 0)
+    }
+
+    #[inline]
+    pub const fn b(self) -> Direction {
+        Direction::from_bool(self.data & 0b10 != 0)
+    }
+
     pub const fn solved(index: u8) -> Edge {
         assert!(index < 12);
         Edge { data: index }
@@ -26,6 +40,32 @@ impl Edge {
         Axis::from_u8((self.data >> 2) & 0b11)
     }
 
+    pub const fn faces(self) -> [Face; 2] {
+        let normal = self.normal();
+        let a = Direction::from_bool(self.data & 0b01 != 0);
+        let b = Direction::from_bool(self.data & 0b10 != 0);
+        [Face::new(normal.next(), a), Face::new(normal.prev(), b)]
+    }
+
+    /// Given the origin [`Edge`] and the current `edges`, find the current state
+    /// of the given edge.
+    pub const fn current(self, edges: &[Edge; 12]) -> Edge {
+        let index = self.data & 0b01111;
+        edges[index as usize]
+    }
+
+    // #[inline]
+    // fn face_on_axis(self, axis: Axis) -> Face {
+    //     Face::new(axis, self.direction_on_axis(axis))
+    // }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EdgePosition {
+    data: u8,
+}
+
+impl EdgePosition {
     #[inline]
     pub const fn a(self) -> Direction {
         Direction::from_bool(self.data & 0b01 != 0)
@@ -36,11 +76,46 @@ impl Edge {
         Direction::from_bool(self.data & 0b10 != 0)
     }
 
-    pub const fn faces(self) -> [Face; 2] {
-        let normal = self.normal();
-        let a = Direction::from_bool(self.data & 0b01 != 0);
-        let b = Direction::from_bool(self.data & 0b10 != 0);
-        [Face::new(normal.next(), a), Face::new(normal.prev(), b)]
+    pub fn from_faces([f1, f2]: [Face; 2]) -> Self {
+        let normal = Axis::other(f1.axis(), f2.axis());
+        let properly_ordered = f1.axis() == normal.next();
+        let (a, b) = if properly_ordered {
+            (f1.direction(), f2.direction())
+        } else {
+            (f2.direction(), f1.direction())
+        };
+
+        EdgePosition {
+            data: (a.u8() << 0) + (b.u8() << 1) + (normal.u8() << 2),
+        }
+    }
+
+    // TODO: Maybe this should take the array directly. It's just 12 bytes...
+    pub fn pick(self, edges: &[Edge; 12]) -> Edge {
+        edges[self.data as usize]
+    }
+
+    #[inline]
+    pub const fn normal(self) -> Axis {
+        Axis::from_u8((self.data >> 2) & 0b11)
+    }
+
+    pub fn from_index(index: u8) -> Self {
+        assert!(index < 12);
+        EdgePosition { data: index }
+    }
+
+    fn direction_on_axis(self, axis: Axis) -> Direction {
+        assert_ne!(self.normal(), axis);
+        if self.normal().next() == axis {
+            self.a()
+        } else {
+            self.b()
+        }
+    }
+
+    fn face_on_axis(self, axis: Axis) -> Face {
+        Face::new(axis, self.direction_on_axis(axis))
     }
 
     pub fn orientation_axis(self) -> Axis {
@@ -67,101 +142,77 @@ impl Edge {
         self.face_on_axis(self.non_orientation_axis())
     }
 
-    pub fn oriented_from_faces([f1, f2]: [Face; 2]) -> Edge {
-        let normal = Axis::other(f1.axis(), f2.axis());
-        let properly_ordered = f1.axis() == normal.next();
-        let (a, b) = if properly_ordered {
-            (f1.direction(), f2.direction())
-        } else {
-            (f2.direction(), f1.direction())
-        };
-
-        Edge {
-            data: (a.u8() << 0) + (b.u8() << 1) + (normal.u8() << 2),
-        }
-    }
-
-    /// Given the origin [`Edge`] and the current `edges`, find the current state
-    /// of the given edge.
-    pub const fn current(self, edges: &[Edge; 12]) -> Edge {
-        let index = self.data & 0b01111;
-        edges[index as usize]
-    }
-
-    fn direction_on_axis(self, axis: Axis) -> Direction {
-        assert_ne!(self.normal(), axis);
-        if self.normal().next() == axis {
-            self.a()
-        } else {
-            self.b()
-        }
-    }
-
-    fn face_on_axis(self, axis: Axis) -> Face {
-        Face::new(axis, self.direction_on_axis(axis))
-    }
-
-    // fn faces_of(index: u8) -> [Face; 2] {
-    //     let s = Edge::solved(index);
-    //     [
-    //         Face::new(s.normal().next(), s.a()),
-    //         Face::new(s.normal().next().next(), s.b()),
-    //     ]
-    // }
-
-    // fn position_index(&self) -> u8 {
-    //     self.data % 4
-    // }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct EdgePosition(Edge);
-
-impl EdgePosition {
-    pub fn from_faces([f1, f2]: [Face; 2]) -> Self {
-        EdgePosition(Edge::oriented_from_faces([f1, f2]))
-    }
-
-    // TODO: Maybe this should take the array directly. It's just 12 bytes...
-    pub fn pick(self, edges: &[Edge; 12]) -> Edge {
-        edges[self.0.data as usize]
+    pub fn contains_face(self, face: Face) -> bool {
+        face.axis() != self.normal() && face.direction() == self.direction_on_axis(face.axis())
     }
 }
 
 pub fn sticker(edge: Edge, position: EdgePosition, face: Face) -> Sticker {
-    let edge_oriented = edge.is_oriented();
-    let is_orientation_axis = position.0.orientation_axis() == face.axis();
-    if edge_oriented == is_orientation_axis {
-        position.0.orientation_face()
+    // TODO: Implement orientation.
+    assert_ne!(face.axis(), position.normal());
+    if face.axis() == position.normal().next() {
+        Face::new(edge.normal().next(), edge.a())
     } else {
-        assert!(position.0.orientation_face() != position.0.other_face());
-        position.0.other_face()
+        Face::new(edge.normal().prev(), edge.b())
     }
 }
 
-// pub fn index_from_faces([f1, f2]: [Face; 2]) -> u8 {
-//     assert_ne!(f1.axis(), f2.axis());
-//     let normal = Axis::other(f1.axis(), f2.axis());
-//     let (a, b) = if normal.next() == f1.axis() {
-//         (f1.direction(), f2.direction())
-//     } else {
-//         (f2.direction(), f1.direction())
-//     };
+pub fn move_pieces(edges: [Edge; 12], mov: Move) -> [Edge; 12] {
+    array::from_fn(|i| {
+        let position = EdgePosition::from_index(i as u8);
+        let (dir_mov, other_axis_offset) = if mov.face().axis() == position.normal().next() {
+            (position.a(), 1)
+        } else if mov.face().axis() == position.normal().prev() {
+            (position.b(), 0)
+        } else {
+            return edges[i];
+        };
 
-//     println!("{:?}{:?}, {:?}, {:?}", f1, f2, a, b);
-//     let offset = |face: Face| {
-//         if face.axis() == normal.next() {
-//             0
-//         } else {
-//             assert_eq!(face.axis(), normal.next().next());
-//             1
-//         }
-//     };
+        if dir_mov != mov.face().direction() {
+            return edges[i];
+        }
 
-//     ((normal as u8) << 2)
-//         + ((f1.direction() as u8) << offset(f1))
-//         + ((f2.direction() as u8) << offset(f2))
+        if !matches!(mov.amount(), Amount::Double) {
+            todo!();
+        }
 
-//     // dbg!(a as u8, b as u8, normal as u8);
-//     // ((a as u8) << 0) + ((b as u8) << 1) + ((normal as u8) << 2)
-// }
+        edges[(i ^ (0b1 << other_axis_offset)) as usize]
+    })
+}
+
+impl fmt::Display for Edge {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let [a, b] = self.faces();
+        write!(
+            f,
+            "{a:?}{b:?} ({})",
+            if self.is_oriented() { '✓' } else { 'x' }
+        )
+    }
+}
+
+impl fmt::Display for EdgePosition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // TODO: Bodge
+        let [a, b] = Edge { data: self.data }.faces();
+        write!(f, "{a:?}{b:?}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use quickcheck::{Arbitrary, Gen};
+
+    use super::*;
+
+    impl Arbitrary for Edge {
+        fn arbitrary(g: &mut Gen) -> Self {
+            let normal = Axis::arbitrary(g);
+            let a = Direction::arbitrary(g);
+            let b = Direction::arbitrary(g);
+            Edge {
+                data: (a.u8() << 0) + (b.u8() << 1) + (normal.u8() << 2),
+            }
+        }
+    }
+}

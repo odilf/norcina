@@ -6,9 +6,10 @@ use crate::{
     corner::{self, Corner, CornerPosition},
     edge::{self, Edge, EdgePosition},
     math::Face,
+    mov::Move,
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Cube {
     corners: [Corner; 8],
     edges: [Edge; 12],
@@ -60,9 +61,6 @@ impl Cube {
             let position = CornerPosition::from_faces(faces);
             let piece = position.pick(self.corners);
             corner::sticker(piece, position, face)
-            // let index = corner::index_from_faces(faces);
-            // let corner = self.corners[index as usize];
-            // corner::sticker(corner.orientation(), index, face.axis())
         } else {
             let other_face = match (row, col) {
                 (0, 1) => up,
@@ -75,6 +73,13 @@ impl Cube {
             let position = EdgePosition::from_faces([face, other_face]);
             let piece = position.pick(&self.edges);
             edge::sticker(piece, position, face)
+        }
+    }
+
+    pub fn mov(self, mov: Move) -> Self {
+        Self {
+            corners: corner::move_pieces(self.corners, mov),
+            edges: edge::move_pieces(self.edges, mov),
         }
     }
 }
@@ -90,6 +95,41 @@ const DEFAULT_COLOR_SCHEME: ColorScheme = |face| match face {
     Face::D => Rgb(255, 224, 0),
     Face::B => Rgb(79, 123, 212),
 };
+
+impl fmt::Debug for Cube {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        struct CornersDebug([Corner; 8]);
+        impl fmt::Debug for CornersDebug {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                let mut dl = f.debug_list();
+                for (i, corner) in self.0.into_iter().enumerate() {
+                    let position = CornerPosition::from_index(i as u8);
+                    dl.entry(&format_args!("{corner} is at {position}"));
+                }
+
+                dl.finish()
+            }
+        }
+
+        struct EdgesDebug([Edge; 12]);
+        impl fmt::Debug for EdgesDebug {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                let mut dl = f.debug_list();
+                for (i, edge) in self.0.into_iter().enumerate() {
+                    let position = EdgePosition::from_index(i as u8);
+                    dl.entry(&format_args!("{edge} is at {position}"));
+                }
+
+                dl.finish()
+            }
+        }
+
+        f.debug_struct("Cube")
+            .field("corners", &CornersDebug(self.corners))
+            .field("edges", &EdgesDebug(self.edges))
+            .finish()
+    }
+}
 
 impl fmt::Display for Cube {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -124,7 +164,7 @@ impl fmt::Display for Cube {
         for d_row in 0..3 {
             pad(f)?;
             for d_col in 0..3 {
-                write(f, self.sticker_at(Face::D, Face::R, d_col, d_row))?;
+                write(f, self.sticker_at(Face::D, Face::F, d_col, d_row))?;
             }
             f.write_char('\n')?;
         }
@@ -137,5 +177,21 @@ impl fmt::Display for Cube {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use quickcheck::{quickcheck, Arbitrary, Gen};
+
+    use super::*;
+
+    impl Arbitrary for Cube {
+        fn arbitrary(g: &mut Gen) -> Self {
+            Self {
+                corners: [Corner::arbitrary(g); 8],
+                edges: [Edge::arbitrary(g); 12],
+            }
+        }
     }
 }
