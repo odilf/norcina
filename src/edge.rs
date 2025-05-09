@@ -148,9 +148,8 @@ impl EdgePosition {
 }
 
 pub fn sticker(edge: Edge, position: EdgePosition, face: Face) -> Sticker {
-    // TODO: Implement orientation.
     assert_ne!(face.axis(), position.normal());
-    if face.axis() == position.normal().next() {
+    if (face.axis() == position.normal().next()) == edge.is_oriented() {
         Face::new(edge.normal().next(), edge.a())
     } else {
         Face::new(edge.normal().prev(), edge.b())

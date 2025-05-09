@@ -1,8 +1,10 @@
 [package]
 name = "barbaroja"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 owo-colors = "4.2.0"
+
+[dev-dependencies]
 quickcheck = "1.0.3"

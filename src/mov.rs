@@ -134,7 +134,7 @@ pub mod algs {
 mod tests {
     use super::*;
     use crate::cube::Cube;
-    use quickcheck::{quickcheck, Arbitrary, Gen};
+    use quickcheck::{Arbitrary, Gen, quickcheck};
 
     impl Arbitrary for Amount {
         fn arbitrary(g: &mut Gen) -> Self {
@@ -166,8 +166,18 @@ mod tests {
             cube.mov(alg!(R RP)) == cube
         }
 
+        fn fn_move_reverse_identity(cube: Cube, face: Face) -> bool {
+            let m1 = Move::new(face, Amount::Single);
+            let m2 = Move::new(face, Amount::Reverse);
+            cube.mov([m1, m2]) == cube
+        }
+
         fn fn_double_t_identity(cube: Cube) -> bool {
             cube.mov(alg!(R RP)) == cube
+        }
+
+        fn fn_single_double_equals_reverse(cube: Cube) -> bool {
+            cube.mov(alg!(R R2)) == cube.mov(alg!(RP))
         }
     }
 }

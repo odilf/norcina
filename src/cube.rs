@@ -146,6 +146,13 @@ impl fmt::Display for Cube {
 
         let pad = |f: &mut fmt::Formatter<'_>| f.write_str("      ");
 
+        for b_row in 0..3 {
+            pad(f)?;
+            for b_col in 0..3 {
+                write(f, self.sticker_at(Face::B, Face::D, b_col, b_row))?;
+            }
+            f.write_char('\n')?;
+        }
         for u_row in 0..3 {
             pad(f)?;
             for u_col in 0..3 {
@@ -172,13 +179,6 @@ impl fmt::Display for Cube {
             pad(f)?;
             for d_col in 0..3 {
                 write(f, self.sticker_at(Face::D, Face::F, d_col, d_row))?;
-            }
-            f.write_char('\n')?;
-        }
-        for b_row in 0..3 {
-            pad(f)?;
-            for b_col in 0..3 {
-                write(f, self.sticker_at(Face::B, Face::D, b_col, b_row))?;
             }
             f.write_char('\n')?;
         }
