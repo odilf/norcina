@@ -1,4 +1,4 @@
-use std::ops;
+use std::{fmt, ops};
 
 use crate::math::{Axis, Direction, Face};
 
@@ -23,6 +23,10 @@ impl Amount {
             3 => Self::Reverse,
             _ => panic!("Invalid amount."),
         }
+    }
+
+    fn iter() -> impl Iterator<Item = Amount> {
+        [Amount::Single, Amount::Double, Amount::Reverse].into_iter()
     }
 }
 
@@ -61,6 +65,23 @@ impl Move {
     pub const fn axis(self) -> Axis {
         self.face().axis()
     }
+
+    /// Enumerates all possible moves.
+    pub fn iter() -> impl Iterator<Item = Self> {
+        Face::iter().flat_map(|face| Amount::iter().map(move |amount| Move::new(face, amount)))
+    }
+}
+
+impl fmt::Display for Move {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let amount_str = match self.amount() {
+            Amount::Single => " ",
+            Amount::Double => "2",
+            Amount::Reverse => "'",
+        };
+
+        write!(f, "{}{}", self.face(), amount_str)
+    }
 }
 
 #[macro_export]
@@ -76,15 +97,6 @@ macro_rules! alg {
 
 pub mod moves {
     macro_rules! generate_moves {
-        // ($face:ident, $amount:ident, $amount_name:tt) => {
-        //     pub const $face: Move = Move::new($face, $amount);
-        // };
-
-        // ($face:ident, [$($amounts:ident)*], [$($amount_names:tt)*]) => {
-        //     $(
-        //         generate_moves!($face, $amounts, $amount_names);
-        //     )*
-        // };
         (@amount 1) => { Amount::Single };
         (@amount 2) => { Amount::Double };
         (@amount 3) => { Amount::Reverse };
@@ -125,8 +137,12 @@ pub mod algs {
 
     pub const SEXY: [Move; 4] = alg!(R U RP UP);
     pub const SLEDGEHAMMER: [Move; 4] = alg!(RP F R FP);
+
     pub const T: [Move; 14] = alg!(R U RP UP RP F R2 UP RP UP R U RP FP);
     pub const J: [Move; 13] = alg!(R U RP F R U RP UP RP FP R2 UP RP);
+    pub const U: [Move; 11] = U_A;
+    pub const U_A: [Move; 11] = alg!(R2 UP RP UP R U R U R UP R);
+    pub const U_B: [Move; 11] = alg!(RP U RP UP RP UP RP U R U R2);
 
     pub const CHECKER: [Move; 6] = alg!(R2 L2 U2 D2 F2 B2);
 
@@ -183,5 +199,17 @@ mod tests {
         fn fn_single_double_equals_reverse(cube: Cube) -> bool {
             cube.mov(alg!(R R2)) == cube.mov(alg!(RP))
         }
+    }
+
+    #[test]
+    fn instance_all_basic_moves() {
+        for mov in Move::iter() {
+            insta::assert_debug_snapshot!(Cube::SOLVED.mov_single(mov))
+        }
+    }
+
+    #[test]
+    fn ua_ub_cancel() {
+        assert!(Cube::SOLVED.mov(algs::U_A).mov(algs::U_B).is_solved())
     }
 }

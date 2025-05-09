@@ -1,4 +1,9 @@
-// TODO: Do this with bit manipulations and transmute
+use std::{
+    fmt::{self, Write as _},
+    mem::transmute,
+};
+
+#[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
     Positive = 0,
@@ -8,21 +13,14 @@ pub enum Direction {
 impl Direction {
     #[inline]
     pub const fn from_bool(value: bool) -> Self {
-        // TODO: Do this with bit manipulations and transmute
-        if value {
-            Direction::Negative
-        } else {
-            Direction::Positive
-        }
+        // SAFETY: The valid bit-patterns for `bool` are 0b0 and 0b1, which are precisely the valid values for Direction.
+        unsafe { transmute(value) }
     }
 
     #[inline]
     const fn bool(self) -> bool {
-        // TODO: Do this with bit manipulations and transmute
-        match self {
-            Direction::Positive => false,
-            Direction::Negative => true,
-        }
+        // SAFETY: The valid bit-patterns for `bool` are 0b0 and 0b1, which are precisely the valid values for Direction.
+        unsafe { transmute(self) }
     }
 
     #[inline]
@@ -30,33 +28,35 @@ impl Direction {
         self as u8
     }
 
+    /// Maps 0 -> Positive, everything else -> Negative.
     #[inline]
-    pub const fn is_positive(self) -> bool {
-        // TODO: Do this with bit manipulations and transmute
-        matches!(self, Direction::Positive)
+    pub const fn from_u8_any(value: u8) -> Direction {
+        Direction::from_bool(value != 0)
     }
 
+    /// SAFETY: `value` need to be either 0 or 1.
     #[inline]
-    pub const fn is_negative(self) -> bool {
-        // TODO: Do this with bit manipulations and transmute
-        matches!(self, Direction::Negative)
+    pub const unsafe fn from_u8_unchecked(value: u8) -> Direction {
+        debug_assert!(value < 2);
+        unsafe { transmute(value) }
+    }
+
+    /// Maps 0 -> Positive, 1 -> Negative.
+    ///
+    /// Panics value is other than 0 or 1.
+    #[inline]
+    pub const fn from_u8(value: u8) -> Direction {
+        assert!(value < 2);
+        unsafe { Self::from_u8_unchecked(value) }
     }
 
     #[inline]
     pub const fn flip(self) -> Self {
-        // TODO: Do this with bit manipulations and transmute
-        match self {
-            Direction::Positive => Direction::Negative,
-            Direction::Negative => Direction::Positive,
-        }
-    }
-
-    pub const fn from_u8(axis_offset: u8) -> Direction {
-        // TODO: Do this with bit manipulations and transmute
-        Self::from_bool(axis_offset != 0)
+        unsafe { Self::from_u8_unchecked(self.u8() ^ 0b1) }
     }
 }
 
+#[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Axis {
     X = 0,
@@ -66,23 +66,45 @@ pub enum Axis {
 
 impl Axis {
     #[inline]
+    pub const fn u8(self) -> u8 {
+        self as u8
+    }
+
+    #[inline]
+    pub const fn from_u8(value: u8) -> Axis {
+        assert!(value < 3);
+        // SAFETY: `Axis` is a u8 and the value can only be 0, 1 or 2.
+        unsafe { Axis::from_u8_unchecked(value) }
+    }
+
+    #[inline]
+    pub const fn from_u8_mod3(value: u8) -> Axis {
+        // SAFETY: We have taken modulo 3, so the possible values are 0, 1 or 2.
+        unsafe { Axis::from_u8_unchecked(value % 3) }
+    }
+
+    /// SAFETY: value needs to be either 0, 1 or 2.
+    pub const unsafe fn from_u8_unchecked(axis_index: u8) -> Axis {
+        debug_assert!(axis_index < 3);
+        unsafe { transmute(axis_index) }
+    }
+
+    #[inline]
     pub const fn next(self) -> Self {
-        Axis::from_u8((self as u8 + 1) % 3)
+        // TODO: Is there a more efficient way?
+        // 00 -> 01
+        // 01 -> 10
+        // 10 -> 00
+        Axis::from_u8_mod3(self.u8() + 1)
     }
 
     #[inline]
     pub const fn prev(self) -> Axis {
-        Axis::from_u8((self as u8 + 2) % 3)
-    }
-
-    #[inline]
-    pub const fn from_u8(axis_index: u8) -> Axis {
-        match axis_index {
-            0 => Axis::X,
-            1 => Axis::Y,
-            2 => Axis::Z,
-            _ => panic!("Axis index was greater than 3"),
-        }
+        // TODO: Is there a more efficient way?
+        // 00 -> 10
+        // 10 -> 01
+        // 01 -> 00
+        Axis::from_u8_mod3(self.u8() + 2)
     }
 
     /// An axis that is neither `a` or `b`.
@@ -93,14 +115,11 @@ impl Axis {
         //    a - (b - a)
         // => 2a - b
         // => 2a + 3 - b (to prevent underflow)
-        Axis::from_u8(((2 * a.u8()) + 3 - b.u8()) % 3)
-    }
-
-    pub const fn u8(self) -> u8 {
-        self as u8
+        Axis::from_u8_mod3((2 * a.u8()) + 3 - b.u8())
     }
 }
 
+// TODO: Implement everything with transmuting.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Face {
     /// Right
@@ -124,17 +143,10 @@ impl Face {
 
     pub const fn new(axis: Axis, direction: Direction) -> Face {
         Face::from_u8(axis.u8() + (direction.u8() << 2))
-        // match (axis, direction) {
-        //     (Axis::X, Direction::Positive) => Face::R,
-        //     (Axis::Y, Direction::Positive) => Face::U,
-        //     (Axis::Z, Direction::Positive) => Face::F,
-        //     (Axis::X, Direction::Negative) => Face::L,
-        //     (Axis::Y, Direction::Negative) => Face::D,
-        //     (Axis::Z, Direction::Negative) => Face::B,
-        // }
     }
 
     pub const fn from_u8(index: u8) -> Face {
+        assert!(index != 3 && index < 7);
         match index {
             0 => Face::R,
             1 => Face::U,
@@ -174,6 +186,27 @@ impl Face {
             !(self.axis().next() == rhs.axis()) ^ self.direction().bool() ^ rhs.direction().bool(),
         );
         Face::new(axis, direction)
+    }
+
+    pub fn iter() -> impl Iterator<Item = Self> {
+        [Face::R, Face::U, Face::F, Face::L, Face::D, Face::B].into_iter()
+    }
+
+    fn char(self) -> char {
+        match self {
+            Self::R => 'R',
+            Self::U => 'U',
+            Self::F => 'F',
+            Self::L => 'L',
+            Self::D => 'D',
+            Self::B => 'B',
+        }
+    }
+}
+
+impl fmt::Display for Face {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_char(self.char())
     }
 }
 

@@ -1,0 +1,30 @@
+---
+source: src/mov.rs
+expression: "Cube::SOLVED.mov_single(mov)"
+---
+Cube {
+    corners: [
+        LUB (0) is at RUF,
+        RUB (0) is at LUF,
+        RDF (0) is at RDF,
+        LDF (0) is at LDF,
+        LUF (0) is at RUB,
+        RUF (0) is at LUB,
+        RDB (0) is at RDB,
+        LDB (0) is at LDB,
+    ],
+    edges: [
+        UB (✓) is at UF,
+        DF (✓) is at DF,
+        UF (✓) is at UB,
+        DB (✓) is at DB,
+        FR (✓) is at FR,
+        BR (✓) is at BR,
+        FL (✓) is at FL,
+        BL (✓) is at BL,
+        LU (✓) is at RU,
+        RU (✓) is at LU,
+        RD (✓) is at RD,
+        LD (✓) is at LD,
+    ],
+}

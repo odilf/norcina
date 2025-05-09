@@ -6,33 +6,14 @@ use crate::{
     mov::{Amount, Move},
 };
 
+#[repr(transparent)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Edge {
-    /// Packed field `---onnab`
-    // /// Packed field `-oxxyyzz`
-    // ///
-    // /// Coordinates are stored in 2-bit 2's complement. That is, the first bit is 1, the second -2. So
-    // /// -1 = 0b10
-    // ///  0 = 0b00
-    // ///  1 = 0b01
-    // ///
-    // /// And you can also represent -2, but that's an invalid bit-pattern.
-    // ///
-    // /// This is mostly to keep 0 at 0b00.
+    /// Packed field `---onnba`
     data: u8,
 }
 
 impl Edge {
-    #[inline]
-    pub const fn a(self) -> Direction {
-        Direction::from_bool(self.data & 0b01 != 0)
-    }
-
-    #[inline]
-    pub const fn b(self) -> Direction {
-        Direction::from_bool(self.data & 0b10 != 0)
-    }
-
     pub const fn solved(index: u8) -> Edge {
         assert!(index < 12);
         Edge { data: index }
@@ -42,18 +23,6 @@ impl Edge {
     pub const fn is_oriented(self) -> bool {
         //            ---onnba
         self.data & 0b00010000 == 0
-    }
-
-    #[inline]
-    pub const fn normal(self) -> Axis {
-        Axis::from_u8((self.data >> 2) & 0b11)
-    }
-
-    pub const fn faces(self) -> [Face; 2] {
-        let normal = self.normal();
-        let a = Direction::from_bool(self.data & 0b01 != 0);
-        let b = Direction::from_bool(self.data & 0b10 != 0);
-        [Face::new(normal.next(), a), Face::new(normal.prev(), b)]
     }
 
     /// Given the origin [`Edge`] and the current `edges`, find the current state
@@ -69,8 +38,13 @@ impl Edge {
     }
 }
 
+#[repr(transparent)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct EdgePosition {
+    /// Packed field `---onnab`
+    ///
+    /// Same as [`Edge`]'s layout. That means the orientation bit might be set, even though it doesn't
+    /// mean anything for an edge's position.
     data: u8,
 }
 
@@ -83,6 +57,11 @@ impl EdgePosition {
     #[inline]
     pub const fn b(self) -> Direction {
         Direction::from_bool(self.data & 0b10 != 0)
+    }
+
+    #[inline]
+    pub const fn normal(self) -> Axis {
+        Axis::from_u8((self.data >> 2) & 0b11)
     }
 
     pub fn from_faces([f1, f2]: [Face; 2]) -> Self {
@@ -99,34 +78,34 @@ impl EdgePosition {
         }
     }
 
+    pub const fn faces(self) -> [Face; 2] {
+        let normal = self.normal();
+        let a = Direction::from_bool(self.data & 0b01 != 0);
+        let b = Direction::from_bool(self.data & 0b10 != 0);
+        [Face::new(normal.next(), a), Face::new(normal.prev(), b)]
+    }
+
     // TODO: Maybe this should take the array directly. It's just 12 bytes...
     pub fn pick(self, edges: &[Edge; 12]) -> Edge {
         edges[self.data as usize]
     }
 
     #[inline]
-    pub const fn normal(self) -> Axis {
-        Axis::from_u8((self.data >> 2) & 0b11)
-    }
-
-    #[inline]
-    pub fn from_index(index: u8) -> Self {
-        assert!(index < 12);
+    pub const fn from_index(index: u8) -> Self {
+        debug_assert!(index < 12);
         EdgePosition { data: index }
     }
 
     #[inline]
     fn direction_on_axis(self, axis: Axis) -> Direction {
-        assert_ne!(
+        debug_assert_ne!(
             self.normal(),
             axis,
             "Tried to get the direction along normal"
         );
-        if self.normal().next() == axis {
-            self.a()
-        } else {
-            self.b()
-        }
+
+        let shift = (3 - self.normal().u8() + axis.u8()) % 3 - 1;
+        Direction::from_u8((self.data >> shift) & 0b1)
     }
 
     #[inline]
@@ -230,7 +209,6 @@ pub fn move_pieces(edges: [Edge; 12], mov: Move) -> [Edge; 12] {
                 // Here, with ternary coordinates, one is 0 and the other is either 1 or -1.
                 // If `i` is 0, then `p[j]` stays as-is. Otherwise, `p[j]` gets flipped.
                 let other_face = if i == position.normal().u8() {
-                    // assert!(j == position.normal().u8());
                     let axis = Axis::from_u8(i);
                     let dir = position.direction_on_axis(Axis::from_u8(j)).flip();
                     Face::new(axis, dir)
@@ -250,7 +228,7 @@ pub fn move_pieces(edges: [Edge; 12], mov: Move) -> [Edge; 12] {
         // single Y-axis moves flip orientation.
         // This value is 1 if move is on x-axis, 0 otherwise.
         let is_on_z_axis = mov.face().axis().u8() >> 1;
-        assert!(if mov.face().axis() == Axis::Z {
+        debug_assert!(if mov.face().axis() == Axis::Z {
             is_on_z_axis == 1
         } else {
             is_on_z_axis == 0
@@ -264,26 +242,22 @@ pub fn move_pieces(edges: [Edge; 12], mov: Move) -> [Edge; 12] {
 
 impl fmt::Display for Edge {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let [a, b] = self.faces();
-        write!(
-            f,
-            "{a:?}{b:?} ({})",
-            if self.is_oriented() { '✓' } else { 'x' }
-        )
+        let [a, b] = self.position().faces();
+        write!(f, "{a}{b} ({})", if self.is_oriented() { '✓' } else { 'x' })
     }
 }
 
 impl fmt::Display for EdgePosition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // TODO: Bodge
-        let [a, b] = Edge { data: self.data }.faces();
-        write!(f, "{a:?}{b:?}")
+        let [a, b] = self.faces();
+        write!(f, "{a}{b}")
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use quickcheck::{Arbitrary, Gen};
+    use quickcheck::{Arbitrary, Gen, TestResult, quickcheck};
 
     use super::*;
 
@@ -294,6 +268,21 @@ mod tests {
             let b = Direction::arbitrary(g);
             Edge {
                 data: (a.u8() << 0) + (b.u8() << 1) + (normal.u8() << 2),
+            }
+        }
+    }
+
+    quickcheck! {
+        fn from_faces_produces_edge_with_those_faces(f1: Face, f2: Face) -> TestResult {
+            if f1.axis() == f2.axis() {
+                TestResult::discard()
+            } else {
+                let faces =
+                    EdgePosition::from_faces([f1, f2]).faces();
+
+                TestResult::from_bool(
+                    faces == [f1, f2] || faces == [f2, f1]
+                )
             }
         }
     }

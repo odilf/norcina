@@ -7,4 +7,10 @@ edition = "2024"
 owo-colors = "4.2.0"
 
 [dev-dependencies]
+insta = { version = "1.43.1", default-features = false, features = ["ron"] }
 quickcheck = "1.0.3"
+
+# For insta
+[profile.dev.package]
+insta.opt-level = 3
+similar.opt-level = 3

@@ -89,6 +89,10 @@ impl Cube {
         }
         self
     }
+
+    pub const fn is_solved(self) -> bool {
+        matches!(self, Self::SOLVED)
+    }
 }
 
 pub type Sticker = Face;
@@ -200,5 +204,15 @@ mod tests {
                 edges: [Edge::arbitrary(g); 12],
             }
         }
+    }
+
+    #[test]
+    fn debug_cube_insta() {
+        insta::assert_debug_snapshot!(Cube::SOLVED)
+    }
+
+    #[test]
+    fn display_cube_insta() {
+        insta::assert_snapshot!(Cube::SOLVED)
     }
 }

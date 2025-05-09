@@ -26,6 +26,15 @@
       perSystem =
         { system, ... }:
         let
+          toolchain = pkgs.rust-bin.selectLatestNightlyWith (
+            toolchain:
+            toolchain.default.override {
+              extensions = [
+                "rust-src"
+                "miri"
+              ];
+            }
+          );
           overlays = [ (import rust-overlay) ];
           pkgs = import nixpkgs { inherit system overlays; };
         in
@@ -33,8 +42,9 @@
           formatter = pkgs.nixfmt-rfc-style;
           devShells.default = pkgs.mkShell {
             packages = [
-              pkgs.rust-bin.beta.latest.default
+              toolchain
               pkgs.rust-analyzer
+              pkgs.cargo-nextest
             ];
           };
         };

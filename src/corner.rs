@@ -1,4 +1,4 @@
-use std::{array, fmt};
+use std::{array, fmt, mem::transmute};
 
 use crate::{
     cube::Sticker,
@@ -6,13 +6,56 @@ use crate::{
     mov::{Amount, Move},
 };
 
+#[repr(transparent)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Corner {
     /// Packed field `---oozyx`
+    ///
+    /// Invariants:
+    /// - Orientation is always 0, 1 or 2.
+    /// - Three most significant bits are always 0.
     data: u8,
 }
 
 impl Corner {
+    #[inline]
+    pub const fn orientation(self) -> Axis {
+        let v = (self.data >> 3) & 0b11;
+        debug_assert!(v < 3);
+        // SAFETY: orientation bits are guaranteed to be either 0, 1 or 2.
+        unsafe { Axis::from_u8_unchecked(v) }
+    }
+
+    #[inline]
+    pub const fn direction_on_axis(self, axis: Axis) -> Direction {
+        Direction::from_bool(self.data >> axis.u8() & 0b1 != 0)
+    }
+
+    pub const fn solved(index: u8) -> Corner {
+        assert!(index < 8);
+        Corner { data: index }
+    }
+
+    /// Whether the piece is on the given face.
+    #[inline]
+    pub fn on_face(self, face: Face) -> bool {
+        self.direction_on_axis(face.axis()) == face.direction()
+    }
+
+    #[inline]
+    pub const fn position(self) -> CornerPosition {
+        // SAFETY: `CornerPosition` and `Corner` have the same single u8 layout
+        unsafe { transmute(self) }
+    }
+}
+
+#[repr(transparent)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CornerPosition {
+    data: u8,
+}
+
+impl CornerPosition {
     #[inline]
     pub const fn x(self) -> Direction {
         Direction::from_bool(self.data & 0b001 != 0)
@@ -28,49 +71,6 @@ impl Corner {
         Direction::from_bool(self.data & 0b100 != 0)
     }
 
-    #[inline]
-    pub const fn orientation(self) -> Axis {
-        Axis::from_u8((self.data >> 3) % 4)
-    }
-
-    #[inline]
-    pub const fn direction_on_axis(self, axis: Axis) -> Direction {
-        Direction::from_bool(self.data >> axis.u8() & 0b1 != 0)
-    }
-
-    pub const fn solved(index: u8) -> Corner {
-        assert!(index < 8);
-        Corner { data: index }
-    }
-
-    pub fn faces(self) -> [Face; 3] {
-        [
-            Face::new(Axis::X, self.x()),
-            Face::new(Axis::Y, self.y()),
-            Face::new(Axis::Z, self.z()),
-        ]
-    }
-
-    /// Whether the piece is on the given face.
-    #[inline]
-    pub fn on_face(self, face: Face) -> bool {
-        self.direction_on_axis(face.axis()) == face.direction()
-    }
-
-    pub const fn position(self) -> CornerPosition {
-        // TODO: We can probably do a transmute here... But we should
-        // figure out the specific invariants of whether the corner
-        // position can have the orientation bits be non-zero or not.
-        CornerPosition { data: self.data }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct CornerPosition {
-    data: u8,
-}
-
-impl CornerPosition {
     pub fn from_faces(faces: [Face; 3]) -> Self {
         assert!(
             faces[0].axis() != faces[1].axis()
@@ -87,6 +87,13 @@ impl CornerPosition {
         CornerPosition { data: index }
     }
 
+    pub fn faces(self) -> [Face; 3] {
+        [
+            Face::new(Axis::X, self.x()),
+            Face::new(Axis::Y, self.y()),
+            Face::new(Axis::Z, self.z()),
+        ]
+    }
     pub fn from_index(index: u8) -> Self {
         assert!(index < 8);
         CornerPosition { data: index }
@@ -180,22 +187,22 @@ pub fn move_pieces(corners: [Corner; 8], mov: Move) -> [Corner; 8] {
 
 impl fmt::Display for Corner {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let [a, b, c] = self.faces();
+        let [a, b, c] = self.position().faces();
         let o = self.orientation();
-        write!(f, "{a:?}{b:?}{c:?} ({})", o.u8())
+        write!(f, "{a}{b}{c} ({})", o.u8())
     }
 }
 
 impl fmt::Display for CornerPosition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let [a, b, c] = Corner { data: self.data }.faces();
-        write!(f, "{a:?}{b:?}{c:?}")
+        let [a, b, c] = self.faces();
+        write!(f, "{a}{b}{c}")
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use quickcheck::{Arbitrary, Gen};
+    use quickcheck::{Arbitrary, Gen, quickcheck};
 
     use super::*;
 
@@ -207,6 +214,20 @@ mod tests {
             Corner {
                 data: (x.u8() << 0) + (y.u8() << 1) + (z.u8() << 2),
             }
+        }
+    }
+
+    quickcheck! {
+        fn from_faces_produces_corner_with_those_faces(d1: Direction, d2: Direction, d3: Direction) -> bool {
+            let faces = [
+                Face::new(Axis::X, d1),
+                Face::new(Axis::Y, d2),
+                Face::new(Axis::Z, d3),
+            ];
+
+            let new_faces = CornerPosition::from_faces(faces).faces();
+
+            faces == new_faces
         }
     }
 }
