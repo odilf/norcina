@@ -1,3 +1,4 @@
+// TODO: Do this with bit manipulations and transmute
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
     Positive = 0,
@@ -7,6 +8,7 @@ pub enum Direction {
 impl Direction {
     #[inline]
     pub const fn from_bool(value: bool) -> Self {
+        // TODO: Do this with bit manipulations and transmute
         if value {
             Direction::Negative
         } else {
@@ -16,6 +18,7 @@ impl Direction {
 
     #[inline]
     const fn bool(self) -> bool {
+        // TODO: Do this with bit manipulations and transmute
         match self {
             Direction::Positive => false,
             Direction::Negative => true,
@@ -29,12 +32,28 @@ impl Direction {
 
     #[inline]
     pub const fn is_positive(self) -> bool {
+        // TODO: Do this with bit manipulations and transmute
         matches!(self, Direction::Positive)
     }
 
     #[inline]
     pub const fn is_negative(self) -> bool {
+        // TODO: Do this with bit manipulations and transmute
         matches!(self, Direction::Negative)
+    }
+
+    #[inline]
+    pub const fn flip(self) -> Self {
+        // TODO: Do this with bit manipulations and transmute
+        match self {
+            Direction::Positive => Direction::Negative,
+            Direction::Negative => Direction::Positive,
+        }
+    }
+
+    pub const fn from_u8(axis_offset: u8) -> Direction {
+        // TODO: Do this with bit manipulations and transmute
+        Self::from_bool(axis_offset != 0)
     }
 }
 
@@ -161,7 +180,7 @@ impl Face {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use quickcheck::{quickcheck, Arbitrary, Gen, TestResult};
+    use quickcheck::{Arbitrary, Gen, TestResult, quickcheck};
 
     impl Arbitrary for Direction {
         fn arbitrary(g: &mut Gen) -> Self {

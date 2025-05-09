@@ -1,6 +1,6 @@
 use std::ops;
 
-use crate::math::{Direction, Face};
+use crate::math::{Axis, Direction, Face};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Amount {
@@ -56,6 +56,10 @@ impl Move {
 
     pub const fn amount(self) -> Amount {
         Amount::from_u8(self.data >> 3)
+    }
+
+    pub const fn axis(self) -> Axis {
+        self.face().axis()
     }
 }
 

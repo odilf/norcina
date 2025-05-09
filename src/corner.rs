@@ -1,7 +1,5 @@
 use std::{array, fmt};
 
-use owo_colors::{OwoColorize, colors::css::Orange};
-
 use crate::{
     cube::Sticker,
     math::{Axis, Direction, Face},
@@ -128,7 +126,7 @@ pub fn sticker(corner: Corner, position: CornerPosition, face: Face) -> Sticker 
 }
 
 pub fn move_pieces(corners: [Corner; 8], mov: Move) -> [Corner; 8] {
-    let mask = 0b1 << mov.face().axis().u8();
+    let mask = 0b1 << mov.axis().u8();
 
     array::from_fn(|i| {
         let position = CornerPosition::from_index(i as u8);
@@ -139,14 +137,12 @@ pub fn move_pieces(corners: [Corner; 8], mov: Move) -> [Corner; 8] {
         // TODO: Maybe this should be a method in position?
         // TODO: Surely there is a way to do this with less branching.
         let (a, b) = match (mov.amount(), mov.face().direction()) {
-            (Amount::Single, Direction::Positive) | (Amount::Reverse, Direction::Negative) => (
-                (mov.face().axis().u8() + 1) % 3,
-                (mov.face().axis().u8() + 2) % 3,
-            ),
-            (Amount::Reverse, Direction::Positive) | (Amount::Single, Direction::Negative) => (
-                (mov.face().axis().u8() + 2) % 3,
-                (mov.face().axis().u8() + 1) % 3,
-            ),
+            (Amount::Single, Direction::Positive) | (Amount::Reverse, Direction::Negative) => {
+                ((mov.axis().u8() + 1) % 3, (mov.axis().u8() + 2) % 3)
+            }
+            (Amount::Reverse, Direction::Positive) | (Amount::Single, Direction::Negative) => {
+                ((mov.axis().u8() + 2) % 3, (mov.axis().u8() + 1) % 3)
+            }
             (Amount::Double, _) => return corners[i ^ (0b111 ^ mask) as usize],
         };
 
@@ -158,7 +154,7 @@ pub fn move_pieces(corners: [Corner; 8], mov: Move) -> [Corner; 8] {
         // - Unchanged if move is on orientation axis
         // - Otherwise, conjecture for how much to add.
         // For the first part, this value is 0 if move is on x-axis, 1 otherwise.
-        let is_not_on_x_axis = (mov.face().axis().u8() + 1) / 2;
+        let is_not_on_x_axis = (mov.axis().u8() + 1) / 2;
         assert!(
             if mov.face().axis() == Axis::X {
                 is_not_on_x_axis == 0
@@ -171,8 +167,8 @@ pub fn move_pieces(corners: [Corner; 8], mov: Move) -> [Corner; 8] {
 
         // For the second part, my conjecture is that it adds 2 if the
         // xor of the position is 0, otherwise 1
-        let orientation_diff =
-            is_not_on_x_axis << (position.parity() as u8 ^ (mov.amount().u8() & 0b1));
+        let orientation_diff = is_not_on_x_axis
+            << (position.parity() as u8 ^ (mov.amount().u8() & 0b1) ^ (mov.axis().u8() >> 1));
 
         // TODO: Maybe we can inline this mo'
         let mut out = corners[i as usize];
@@ -186,7 +182,7 @@ impl fmt::Display for Corner {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let [a, b, c] = self.faces();
         let o = self.orientation();
-        write!(f, "{a:?}{b:?}{c:?} ({o:?})")
+        write!(f, "{a:?}{b:?}{c:?} ({})", o.u8())
     }
 }
 

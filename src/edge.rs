@@ -1,4 +1,4 @@
-use std::{array, fmt};
+use std::{array, fmt, mem::transmute};
 
 use crate::{
     cube::Sticker,
@@ -8,8 +8,17 @@ use crate::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Edge {
-    /// Packed field `---onnba`
-    // TODO: Try masked version: `-ommmzyx`
+    /// Packed field `---onnab`
+    // /// Packed field `-oxxyyzz`
+    // ///
+    // /// Coordinates are stored in 2-bit 2's complement. That is, the first bit is 1, the second -2. So
+    // /// -1 = 0b10
+    // ///  0 = 0b00
+    // ///  1 = 0b01
+    // ///
+    // /// And you can also represent -2, but that's an invalid bit-pattern.
+    // ///
+    // /// This is mostly to keep 0 at 0b00.
     data: u8,
 }
 
@@ -54,10 +63,10 @@ impl Edge {
         edges[index as usize]
     }
 
-    // #[inline]
-    // fn face_on_axis(self, axis: Axis) -> Face {
-    //     Face::new(axis, self.direction_on_axis(axis))
-    // }
+    fn position(self) -> EdgePosition {
+        // SAFETY: Both [`Edge`] and [`EdgePosition`] are a single `u8` in memory.
+        unsafe { transmute(self) }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -100,13 +109,19 @@ impl EdgePosition {
         Axis::from_u8((self.data >> 2) & 0b11)
     }
 
+    #[inline]
     pub fn from_index(index: u8) -> Self {
         assert!(index < 12);
         EdgePosition { data: index }
     }
 
+    #[inline]
     fn direction_on_axis(self, axis: Axis) -> Direction {
-        assert_ne!(self.normal(), axis);
+        assert_ne!(
+            self.normal(),
+            axis,
+            "Tried to get the direction along normal"
+        );
         if self.normal().next() == axis {
             self.a()
         } else {
@@ -114,11 +129,14 @@ impl EdgePosition {
         }
     }
 
+    #[inline]
     fn face_on_axis(self, axis: Axis) -> Face {
         Face::new(axis, self.direction_on_axis(axis))
     }
 
+    #[inline]
     pub fn orientation_axis(self) -> Axis {
+        // TODO: Do this with bit twiddling
         if self.normal() == Axis::Y {
             Axis::Z
         } else {
@@ -149,10 +167,10 @@ impl EdgePosition {
 
 pub fn sticker(edge: Edge, position: EdgePosition, face: Face) -> Sticker {
     assert_ne!(face.axis(), position.normal());
-    if (face.axis() == position.normal().next()) == edge.is_oriented() {
-        Face::new(edge.normal().next(), edge.a())
+    if (position.orientation_axis() == face.axis()) == edge.is_oriented() {
+        edge.position().orientation_face()
     } else {
-        Face::new(edge.normal().prev(), edge.b())
+        edge.position().other_face()
     }
 }
 
@@ -171,12 +189,76 @@ pub fn move_pieces(edges: [Edge; 12], mov: Move) -> [Edge; 12] {
             return edges[i];
         }
 
-        if !matches!(mov.amount(), Amount::Double) {
-            return edges[i];
-            // todo!();
-        }
+        assert_ne!(mov.face().axis(), position.normal());
+        // Example to what happens to bits on an R move:
+        //    RU    ->    RB    ->    RD    ->    RF    ->    RU
+        // ---01000 -> ---00101 -> ---01010 -> ---00100 -> ---01000
+        // ---onnab    ---onnab    ---onnab    ---onnab    ---onnab
+        let new_edge_pos = match (mov.amount(), mov.face().direction()) {
+            (Amount::Double, _) => return edges[i ^ (0b1 << other_axis_offset) as usize],
+            (Amount::Single, Direction::Positive) | (Amount::Reverse, Direction::Negative) => {
+                // Normal switches to the one that isn't the mov axis.
+                // let normal = Axis::other(mov.face().axis(), position.normal());
 
-        edges[(i ^ (0b1 << other_axis_offset)) as usize]
+                // `i` and `j` are the axes that get rotated.
+                // Specifically (p[i], p[j]) -> (p[j], -p[i])   (where `p` is position).
+                let i = (mov.face().axis().u8() + 1) % 3;
+                let j = (mov.face().axis().u8() + 2) % 3;
+
+                // Here, with ternary coordinates, one is 0 and the other is either 1 or -1.
+                // If `i` is 0, then `p[j]` stays as-is. Otherwise, `p[j]` gets flipped.
+                let other_face = if i == position.normal().u8() {
+                    // assert!(j == position.normal().u8());
+                    let axis = Axis::from_u8(i);
+                    let dir = position.direction_on_axis(Axis::from_u8(j)).flip();
+                    Face::new(axis, dir)
+                } else {
+                    let axis = Axis::from_u8(j);
+                    let dir = position.direction_on_axis(Axis::from_u8(i));
+                    Face::new(axis, dir)
+                };
+
+                let faces = [other_face, mov.face()];
+                EdgePosition::from_faces(faces)
+            }
+            (Amount::Reverse, Direction::Positive) | (Amount::Single, Direction::Negative) => {
+                // `i` and `j` are the axes that get rotated.
+                // Specifically (p[i], p[j]) -> (p[j], -p[i])   (where `p` is position).
+                let i = (mov.face().axis().u8() + 2) % 3;
+                let j = (mov.face().axis().u8() + 1) % 3;
+
+                // Here, with ternary coordinates, one is 0 and the other is either 1 or -1.
+                // If `i` is 0, then `p[j]` stays as-is. Otherwise, `p[j]` gets flipped.
+                let other_face = if i == position.normal().u8() {
+                    // assert!(j == position.normal().u8());
+                    let axis = Axis::from_u8(i);
+                    let dir = position.direction_on_axis(Axis::from_u8(j)).flip();
+                    Face::new(axis, dir)
+                } else {
+                    let axis = Axis::from_u8(j);
+                    let dir = position.direction_on_axis(Axis::from_u8(i));
+                    Face::new(axis, dir)
+                };
+
+                let faces = [other_face, mov.face()];
+                EdgePosition::from_faces(faces)
+            }
+        };
+
+        let out = new_edge_pos.pick(&edges);
+
+        // single Y-axis moves flip orientation.
+        // This value is 1 if move is on x-axis, 0 otherwise.
+        let is_on_z_axis = mov.face().axis().u8() >> 1;
+        assert!(if mov.face().axis() == Axis::Z {
+            is_on_z_axis == 1
+        } else {
+            is_on_z_axis == 0
+        });
+
+        Edge {
+            data: out.data ^ (is_on_z_axis << 4),
+        }
     })
 }
 
