@@ -1,16 +1,23 @@
-[package]
-name = "barbaroja"
-version = "0.1.0"
-edition = "2024"
+[workspace]
+members = [ "norcina",
+  "norcina-core",
+  "norcina-cube-n",
+  "norcina-cube3",
+  "pesto", "pesto-core",
+  "pesto-term",
+]
+resolver = "3"
 
-[dependencies]
+[workspace.dependencies]
 owo-colors = "4.2.0"
-
-[dev-dependencies]
+pathfinding = "4.14.0"
+rand = "0.9.1"
+color-eyre = "0.6.5"
+crossterm = "0.29.0"
+# Dev dependencies
 insta = { version = "1.43.1", default-features = false, features = ["ron"] }
 quickcheck = "1.0.3"
 
 # For insta
 [profile.dev.package]
 insta.opt-level = 3
-similar.opt-level = 3

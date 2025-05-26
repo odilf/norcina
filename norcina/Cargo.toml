@@ -1,0 +1,9 @@
+[package]
+name = "norcina"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+norcina-core = { path = "../norcina-core" }
+norcina-cube-n = { path = "../norcina-cube-n" }
+norcina-cube3 = { path = "../norcina-cube3" }

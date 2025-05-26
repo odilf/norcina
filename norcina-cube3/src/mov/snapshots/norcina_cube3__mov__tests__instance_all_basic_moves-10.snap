@@ -1,0 +1,30 @@
+---
+source: norcina-cube3/src/mov/mod.rs
+expression: "Cube::SOLVED.mov_single(mov)"
+---
+Cube {
+    corners: [
+        RUF (0) is at RUF,
+        LUB (0) is at LUF,
+        RDF (0) is at RDF,
+        LUF (0) is at LDF,
+        RUB (0) is at RUB,
+        LDB (0) is at LUB,
+        RDB (0) is at RDB,
+        LDF (0) is at LDB,
+    ],
+    edges: [
+        UF (✓) is at UF,
+        DF (✓) is at DF,
+        UB (✓) is at UB,
+        DB (✓) is at DB,
+        FR (✓) is at FR,
+        BR (✓) is at BR,
+        LU (✓) is at FL,
+        LD (✓) is at BL,
+        RU (✓) is at RU,
+        BL (✓) is at LU,
+        RD (✓) is at RD,
+        FL (✓) is at LD,
+    ],
+}

@@ -1,0 +1,14 @@
+[package]
+name = "norcina-cube-n"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+quickcheck = { workspace = true, optional = true }
+rand.workspace = true
+
+[dev-dependencies]
+quickcheck.workspace = true
+
+[features]
+default = ["quickcheck"]

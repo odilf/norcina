@@ -1,19 +1,58 @@
 use std::{array, fmt, mem::transmute};
 
 use crate::{
-    cube::Sticker,
+    Sticker,
     math::{Axis, Direction, Face},
     mov::{Amount, Move},
 };
 
 #[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Edge {
     /// Packed field `---onnba`
     data: u8,
 }
 
 impl Edge {
+    #[inline]
+    pub const fn a(self) -> Direction {
+        // TODO: Transmute
+        Direction::from_bool(self.data & 0b01 != 0)
+    }
+
+    #[inline]
+    pub const fn b(self) -> Direction {
+        // TODO: Transmute
+        Direction::from_bool(self.data & 0b10 != 0)
+    }
+
+    #[inline]
+    pub const fn normal(self) -> Axis {
+        // TODO: Transmute/unchecked
+        Axis::from_u8((self.data >> 2) & 0b11)
+    }
+
+    #[inline]
+    pub const fn orientation(self) -> Direction {
+        // TODO: Transmute/unchecked
+        Direction::from_u8(self.data >> 4)
+    }
+
+    pub const SOLVED: [Edge; 12] = [
+        Edge::solved(0),
+        Edge::solved(1),
+        Edge::solved(2),
+        Edge::solved(3),
+        Edge::solved(4),
+        Edge::solved(5),
+        Edge::solved(6),
+        Edge::solved(7),
+        Edge::solved(8),
+        Edge::solved(9),
+        Edge::solved(10),
+        Edge::solved(11),
+    ];
+
     pub const fn solved(index: u8) -> Edge {
         assert!(index < 12);
         Edge { data: index }
@@ -25,21 +64,37 @@ impl Edge {
         self.data & 0b00010000 == 0
     }
 
-    /// Given the origin [`Edge`] and the current `edges`, find the current state
-    /// of the given edge.
-    pub const fn current(self, edges: &[Edge; 12]) -> Edge {
-        let index = self.data & 0b01111;
-        edges[index as usize]
+    #[inline]
+    pub fn position(self) -> EdgePosition {
+        // SAFETY: Both [`Edge`] and [`EdgePosition`] are a single `u8` in memory, and we are removing the orientation bit.
+        unsafe { EdgePosition::from_index_unchecked(self.data & 0b01111) }
     }
 
-    fn position(self) -> EdgePosition {
-        // SAFETY: Both [`Edge`] and [`EdgePosition`] are a single `u8` in memory.
-        unsafe { transmute(self) }
+    /// Returns a possible set of 12 edges.
+    ///
+    /// The orientation parity is always positive/0/false.
+    pub fn random(rng: &mut impl rand::Rng) -> [Edge; 12] {
+        use rand::seq::SliceRandom;
+
+        let mut out = Self::SOLVED;
+        out.shuffle(rng);
+
+        let mut final_orientation = false;
+        for corner in &mut out[0..11] {
+            let orientation = rng.random_bool(0.5);
+            corner.data += (orientation as u8) << 3;
+            final_orientation ^= orientation;
+        }
+
+        // TODO: Does this work?
+        out[11].data += (final_orientation as u8) << 3;
+
+        out
     }
 }
 
 #[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct EdgePosition {
     /// Packed field `---onnab`
     ///
@@ -90,9 +145,16 @@ impl EdgePosition {
         edges[self.data as usize]
     }
 
+    // SAFETY: index must be between 0 and 11.
+    pub unsafe fn from_index_unchecked(index: u8) -> EdgePosition {
+        debug_assert!(index < 12);
+        // SAFETY: Numbers between 0 and 11 are valid edge positions.
+        unsafe { transmute(index) }
+    }
+
     #[inline]
     pub const fn from_index(index: u8) -> Self {
-        debug_assert!(index < 12);
+        assert!(index < 12);
         EdgePosition { data: index }
     }
 
@@ -141,6 +203,48 @@ impl EdgePosition {
 
     pub fn contains_face(self, face: Face) -> bool {
         face.axis() != self.normal() && face.direction() == self.direction_on_axis(face.axis())
+    }
+
+    /// The minimum amount of turns to get from `self` to `other`.
+    ///
+    /// There is
+    /// - 1 position where this value is 0 (itself),
+    /// - 6 positions where the value is 1 and
+    /// - 4 positions where the value is 2.
+    pub fn turn_distance(self, other: EdgePosition) -> u8 {
+        let [f1, f2] = self.faces();
+        let [g1, g2] = other.faces();
+
+        let f1_shared = f1 == g1 || f1 == g2;
+        let f2_shared = f2 == g1 || f2 == g2;
+        let shared_faces = f1_shared as u8 + f2_shared as u8;
+        2 - shared_faces
+    }
+
+    pub const ALL: [EdgePosition; 12] = [
+        EdgePosition::from_index(0),
+        EdgePosition::from_index(1),
+        EdgePosition::from_index(2),
+        EdgePosition::from_index(3),
+        EdgePosition::from_index(4),
+        EdgePosition::from_index(5),
+        EdgePosition::from_index(6),
+        EdgePosition::from_index(7),
+        EdgePosition::from_index(8),
+        EdgePosition::from_index(9),
+        EdgePosition::from_index(10),
+        EdgePosition::from_index(11),
+    ];
+
+    pub const fn index(self) -> u8 {
+        // TODO: Maybe transmute
+        self.data
+    }
+
+    pub fn with_orientation(self, orientation: Direction) -> Edge {
+        Edge {
+            data: self.data + (orientation.u8() << 4),
+        }
     }
 }
 
@@ -247,6 +351,16 @@ impl fmt::Display for Edge {
     }
 }
 
+impl fmt::Debug for EdgePosition {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("EdgePosition")
+            .field("a", &self.a())
+            .field("b", &self.b())
+            .field("normal", &self.normal())
+            .finish()
+    }
+}
+
 impl fmt::Display for EdgePosition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // TODO: Bodge
@@ -255,7 +369,7 @@ impl fmt::Display for EdgePosition {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "quickcheck"))]
 mod tests {
     use quickcheck::{Arbitrary, Gen, TestResult, quickcheck};
 
@@ -266,7 +380,21 @@ mod tests {
             let normal = Axis::arbitrary(g);
             let a = Direction::arbitrary(g);
             let b = Direction::arbitrary(g);
+            let orientation = bool::arbitrary(g);
             Edge {
+                data: (a.u8() << 0)
+                    + (b.u8() << 1)
+                    + (normal.u8() << 2)
+                    + ((orientation as u8) << 4),
+            }
+        }
+    }
+    impl Arbitrary for EdgePosition {
+        fn arbitrary(g: &mut Gen) -> Self {
+            let normal = Axis::arbitrary(g);
+            let a = Direction::arbitrary(g);
+            let b = Direction::arbitrary(g);
+            EdgePosition {
                 data: (a.u8() << 0) + (b.u8() << 1) + (normal.u8() << 2),
             }
         }
@@ -284,6 +412,16 @@ mod tests {
                     faces == [f1, f2] || faces == [f2, f1]
                 )
             }
+        }
+
+        fn turn_distnace_distribution_is_1_6_1(position: EdgePosition) -> bool {
+            let mut bins = [0, 0, 0];
+            for other in EdgePosition::ALL {
+                let diff = position.turn_distance(other);
+                bins[diff as usize] += 1;
+            }
+
+            bins == [1, 6, 5]
         }
     }
 }

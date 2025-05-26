@@ -1,0 +1,30 @@
+---
+source: norcina-cube3/src/cube.rs
+expression: "Cube::SOLVED"
+---
+Cube {
+    corners: [
+        RUF (0) is at RUF,
+        LUF (0) is at LUF,
+        RDF (0) is at RDF,
+        LDF (0) is at LDF,
+        RUB (0) is at RUB,
+        LUB (0) is at LUB,
+        RDB (0) is at RDB,
+        LDB (0) is at LDB,
+    ],
+    edges: [
+        UF (✓) is at UF,
+        DF (✓) is at DF,
+        UB (✓) is at UB,
+        DB (✓) is at DB,
+        FR (✓) is at FR,
+        BR (✓) is at BR,
+        FL (✓) is at FL,
+        BL (✓) is at BL,
+        RU (✓) is at RU,
+        LU (✓) is at LU,
+        RD (✓) is at RD,
+        LD (✓) is at LD,
+    ],
+}

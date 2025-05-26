@@ -56,6 +56,14 @@ impl Direction {
     }
 }
 
+impl std::ops::BitXor for Direction {
+    type Output = Direction;
+    fn bitxor(self, rhs: Self) -> Self::Output {
+        // TODO: Check is unnecessary, pretty sure we know answer is valid statically.
+        Self::from_u8(self.u8() ^ rhs.u8())
+    }
+}
+
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Axis {
@@ -210,10 +218,10 @@ impl fmt::Display for Face {
     }
 }
 
-#[cfg(test)]
-mod tests {
+#[cfg(feature = "quickcheck")]
+mod quickcheck_impl {
     use super::*;
-    use quickcheck::{Arbitrary, Gen, TestResult, quickcheck};
+    use quickcheck::{Arbitrary, Gen};
 
     impl Arbitrary for Direction {
         fn arbitrary(g: &mut Gen) -> Self {
@@ -233,7 +241,12 @@ mod tests {
                 .unwrap()
         }
     }
+}
 
+#[cfg(all(test, feature = "quickcheck"))]
+mod tests {
+    use super::*;
+    use quickcheck::{TestResult, quickcheck};
     quickcheck! {
         fn other_axis_is_always_different_axis(a: Axis, b: Axis) -> TestResult {
             let other = Axis::other(a, b);

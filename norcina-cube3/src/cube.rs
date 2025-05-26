@@ -1,47 +1,38 @@
 use std::fmt::{self, Write as _};
 
-use owo_colors::{OwoColorize, Rgb};
-
-use crate::{
+use norcina_cube_n::math::Face;
+use norcina_cube_n::mov::Move;
+use norcina_cube_n::piece::{
     corner::{self, Corner, CornerPosition},
     edge::{self, Edge, EdgePosition},
-    math::Face,
-    mov::Move,
 };
+use owo_colors::{OwoColorize, Rgb};
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Cube {
-    corners: [Corner; 8],
-    edges: [Edge; 12],
+    // TODO: Is it a problem if these are pub? It might be...
+    pub corners: [Corner; 8],
+    pub edges: [Edge; 12],
 }
 
 impl Cube {
     pub const SOLVED: Self = Cube {
-        corners: [
-            Corner::solved(0),
-            Corner::solved(1),
-            Corner::solved(2),
-            Corner::solved(3),
-            Corner::solved(4),
-            Corner::solved(5),
-            Corner::solved(6),
-            Corner::solved(7),
-        ],
-        edges: [
-            Edge::solved(0),
-            Edge::solved(1),
-            Edge::solved(2),
-            Edge::solved(3),
-            Edge::solved(4),
-            Edge::solved(5),
-            Edge::solved(6),
-            Edge::solved(7),
-            Edge::solved(8),
-            Edge::solved(9),
-            Edge::solved(10),
-            Edge::solved(11),
-        ],
+        corners: Corner::SOLVED,
+        edges: Edge::SOLVED,
     };
+
+    pub fn random_with_rng(rng: &mut impl rand::Rng) -> Self {
+        let mut corners = Corner::random(rng);
+        let mut edges = Edge::random(rng);
+
+        todo!("Fix swaps");
+
+        Cube { corners, edges }
+    }
+
+    pub fn random() -> Self {
+        Self::random_with_rng(&mut rand::rng())
+    }
 
     fn sticker_at(self, face: Face, up: Face, col: i32, row: i32) -> Sticker {
         // Center sticker
@@ -92,6 +83,29 @@ impl Cube {
 
     pub const fn is_solved(self) -> bool {
         matches!(self, Self::SOLVED)
+    }
+
+    /// An iterator of tuples of every state that is reachable from this state, and the number of moves it takes to reach it.
+    pub fn neighbors(self) -> impl Iterator<Item = (Move, Self)> {
+        Move::iter().map(move |mov| (mov, self.mov_single(mov)))
+    }
+
+    pub fn corners(self) -> impl Iterator<Item = (CornerPosition, Corner)> {
+        self.corners.into_iter().enumerate().map(|(i, state)| {
+            (
+                unsafe { CornerPosition::from_index_unchecked(i as u8) },
+                state,
+            )
+        })
+    }
+
+    pub fn edges(self) -> impl Iterator<Item = (EdgePosition, Edge)> {
+        self.edges.into_iter().enumerate().map(|(i, state)| {
+            (
+                unsafe { EdgePosition::from_index_unchecked(i as u8) },
+                state,
+            )
+        })
     }
 }
 
@@ -191,7 +205,7 @@ impl fmt::Display for Cube {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "quickcheck"))]
 mod tests {
     use quickcheck::{Arbitrary, Gen};
 
@@ -199,10 +213,8 @@ mod tests {
 
     impl Arbitrary for Cube {
         fn arbitrary(g: &mut Gen) -> Self {
-            Self {
-                corners: [Corner::arbitrary(g); 8],
-                edges: [Edge::arbitrary(g); 12],
-            }
+            let scramble = <Vec<Move>>::arbitrary(g);
+            Cube::SOLVED.mov(scramble)
         }
     }
 

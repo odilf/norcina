@@ -1,0 +1,23 @@
+[package]
+name = "norcina-cube3"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+norcina-core = { path = "../norcina-core" }
+norcina-cube-n = { path = "../norcina-cube-n" }
+quickcheck = { workspace = true, optional = true }
+dirs = { version = "6.0.0", optional = true }
+nybbles = { version = "0.3.4", optional = true }
+rand.workspace = true
+owo-colors.workspace = true
+pathfinding.workspace = true
+
+[dev-dependencies]
+insta.workspace = true
+quickcheck.workspace = true
+
+[features]
+default = ["quickcheck"]
+lut_heuristic = ["dep:nybbles", "dep:dirs"]
+quickcheck = ["dep:quickcheck"]

@@ -1,15 +1,14 @@
-use std::{array, fmt, mem::transmute};
-
 use crate::{
-    cube::Sticker,
+    Sticker,
     math::{Axis, Direction, Face},
     mov::{Amount, Move},
 };
+use std::{array, fmt, mem::transmute};
 
 #[repr(transparent)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Corner {
-    /// Packed field `---oozyx`
+    /// Packed field `000oozyx`
     ///
     /// Invariants:
     /// - Orientation is always 0, 1 or 2.
@@ -18,6 +17,32 @@ pub struct Corner {
 }
 
 impl Corner {
+    pub const SOLVED: [Self; 8] = [
+        Corner::solved(0),
+        Corner::solved(1),
+        Corner::solved(2),
+        Corner::solved(3),
+        Corner::solved(4),
+        Corner::solved(5),
+        Corner::solved(6),
+        Corner::solved(7),
+    ];
+
+    #[inline]
+    pub const fn x(self) -> Direction {
+        Direction::from_bool(self.data & 0b001 != 0)
+    }
+
+    #[inline]
+    pub const fn y(self) -> Direction {
+        Direction::from_bool(self.data & 0b010 != 0)
+    }
+
+    #[inline]
+    pub const fn z(self) -> Direction {
+        Direction::from_bool(self.data & 0b100 != 0)
+    }
+
     #[inline]
     pub const fn orientation(self) -> Axis {
         let v = (self.data >> 3) & 0b11;
@@ -44,8 +69,31 @@ impl Corner {
 
     #[inline]
     pub const fn position(self) -> CornerPosition {
-        // SAFETY: `CornerPosition` and `Corner` have the same single u8 layout
-        unsafe { transmute(self) }
+        // SAFETY: `CornerPosition` and `Corner` have the same single u8 layout, except the orientation bits, which
+        // we strip out.
+        unsafe { transmute(self.data & 0b00111) }
+    }
+
+    /// Returns a possible set of 8 corners.
+    ///
+    /// The sum of the orientations is a multiple of 3.
+    pub fn random(rng: &mut impl rand::Rng) -> [Corner; 8] {
+        use rand::seq::SliceRandom;
+
+        let mut out = Self::SOLVED;
+        out.shuffle(rng);
+
+        let mut total_orientaiton = 0;
+        for corner in &mut out[0..7] {
+            let orientation = rng.random_range(0..3);
+            corner.data += orientation << 3;
+            total_orientaiton += orientation;
+        }
+
+        // TODO: Does this work?
+        out[7].data += (total_orientaiton.wrapping_neg() % 3) << 3;
+
+        out
     }
 }
 
@@ -72,7 +120,7 @@ impl CornerPosition {
     }
 
     pub fn from_faces(faces: [Face; 3]) -> Self {
-        assert!(
+        debug_assert!(
             faces[0].axis() != faces[1].axis()
                 && faces[1].axis() != faces[2].axis()
                 && faces[2].axis() != faces[0].axis(),
@@ -87,29 +135,78 @@ impl CornerPosition {
         CornerPosition { data: index }
     }
 
-    pub fn faces(self) -> [Face; 3] {
+    pub const fn faces(self) -> [Face; 3] {
         [
             Face::new(Axis::X, self.x()),
             Face::new(Axis::Y, self.y()),
             Face::new(Axis::Z, self.z()),
         ]
     }
-    pub fn from_index(index: u8) -> Self {
+
+    // SAFETY: index must be between 0 and 7.
+    pub const unsafe fn from_index_unchecked(index: u8) -> Self {
+        debug_assert!(index < 8);
+        // SAFETY: Numbers between 0 and 7 are valid corner positions.
+        unsafe { transmute(index) }
+    }
+
+    pub const fn from_index(index: u8) -> Self {
         assert!(index < 8);
         CornerPosition { data: index }
     }
 
-    pub fn pick(self, corners: [Corner; 8]) -> Corner {
+    pub const fn pick(self, corners: [Corner; 8]) -> Corner {
         corners[self.data as usize]
     }
 
-    fn contains_face(self, face: Face) -> bool {
+    pub fn contains_face(self, face: Face) -> bool {
         (self.data >> face.axis().u8()) & 0b1 == face.direction().u8()
     }
 
     /// xor of all position bits, either 0 or 1
     const fn parity(self) -> u8 {
         (self.data ^ (self.data >> 1) ^ (self.data >> 2)) & 0b1
+    }
+
+    /// The minimum number of turns to get from `self` to `other`.
+    ///
+    /// There is
+    /// - 1 position where this value is 0 (itself),
+    /// - 6 positions where the value is 1 and
+    /// - 1 position where the value is 2 (the opposite corner).
+    pub fn turn_distance(self, other: CornerPosition) -> u8 {
+        let diff_coords = ((self.data ^ other.data) & 0b111).count_ones() as u8;
+        // number of different coords -> output
+        // 0 0b00 -> 0
+        // 1 0b01 -> 1
+        // 2 0b10 -> 1
+        // 3 0b11 -> 2
+        // huh, just count ones... again.
+        // Or, (x + 1) / 2, which I'm pretty sure I've done elsewhere...
+        // diff_coords.count_ones() as u8
+        (diff_coords + 1) / 2
+    }
+
+    pub const ALL: [CornerPosition; 8] = [
+        CornerPosition::from_index(0),
+        CornerPosition::from_index(1),
+        CornerPosition::from_index(2),
+        CornerPosition::from_index(3),
+        CornerPosition::from_index(4),
+        CornerPosition::from_index(5),
+        CornerPosition::from_index(6),
+        CornerPosition::from_index(7),
+    ];
+
+    pub const fn u8(self) -> u8 {
+        // TODO: Transmute?
+        self.data
+    }
+
+    pub fn with_orientation(self, orientation: Axis) -> Corner {
+        Corner {
+            data: self.data + (orientation.u8() << 3),
+        }
     }
 }
 
@@ -133,8 +230,6 @@ pub fn sticker(corner: Corner, position: CornerPosition, face: Face) -> Sticker 
 }
 
 pub fn move_pieces(corners: [Corner; 8], mov: Move) -> [Corner; 8] {
-    let mask = 0b1 << mov.axis().u8();
-
     array::from_fn(|i| {
         let position = CornerPosition::from_index(i as u8);
         if !position.contains_face(mov.face()) {
@@ -150,7 +245,10 @@ pub fn move_pieces(corners: [Corner; 8], mov: Move) -> [Corner; 8] {
             (Amount::Reverse, Direction::Positive) | (Amount::Single, Direction::Negative) => {
                 ((mov.axis().u8() + 2) % 3, (mov.axis().u8() + 1) % 3)
             }
-            (Amount::Double, _) => return corners[i ^ (0b111 ^ mask) as usize],
+            (Amount::Double, _) => {
+                let mask = 0b1 << mov.axis().u8();
+                return corners[i ^ (0b111 ^ mask) as usize];
+            }
         };
 
         // Do rotation (a, b) -> (b, -a);
@@ -200,22 +298,41 @@ impl fmt::Display for CornerPosition {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use quickcheck::{Arbitrary, Gen, quickcheck};
-
+#[cfg(feature = "quickcheck")]
+mod quickcheck_impl {
     use super::*;
+
+    use quickcheck::{Arbitrary, Gen};
 
     impl Arbitrary for Corner {
         fn arbitrary(g: &mut Gen) -> Self {
             let x = Direction::arbitrary(g);
             let y = Direction::arbitrary(g);
             let z = Direction::arbitrary(g);
+            let orientation = Axis::arbitrary(g);
             Corner {
+                data: (x.u8() << 0) + (y.u8() << 1) + (z.u8() << 2) + (orientation.u8() << 3),
+            }
+        }
+    }
+
+    impl Arbitrary for CornerPosition {
+        fn arbitrary(g: &mut Gen) -> Self {
+            let x = Direction::arbitrary(g);
+            let y = Direction::arbitrary(g);
+            let z = Direction::arbitrary(g);
+            CornerPosition {
                 data: (x.u8() << 0) + (y.u8() << 1) + (z.u8() << 2),
             }
         }
     }
+}
+
+#[cfg(all(test, feature = "quickcheck"))]
+mod tests {
+    use quickcheck::quickcheck;
+
+    use super::*;
 
     quickcheck! {
         fn from_faces_produces_corner_with_those_faces(d1: Direction, d2: Direction, d3: Direction) -> bool {
@@ -228,6 +345,16 @@ mod tests {
             let new_faces = CornerPosition::from_faces(faces).faces();
 
             faces == new_faces
+        }
+
+        fn turn_distnace_distribution_is_1_6_1(position: CornerPosition) -> bool {
+            let mut bins = [0, 0, 0];
+            for other in CornerPosition::ALL {
+                let diff = position.turn_distance(other);
+                bins[diff as usize] += 1;
+            }
+
+            bins == [1, 6, 1]
         }
     }
 }

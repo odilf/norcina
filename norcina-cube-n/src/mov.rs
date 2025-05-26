@@ -2,6 +2,7 @@ use std::{fmt, ops};
 
 use crate::math::{Axis, Direction, Face};
 
+#[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Amount {
     Single = 1,
@@ -17,6 +18,7 @@ impl Amount {
 
     #[inline]
     pub const fn from_u8(x: u8) -> Self {
+        // TODO: Transmute and stuff
         match x {
             1 => Self::Single,
             2 => Self::Double,
@@ -25,7 +27,17 @@ impl Amount {
         }
     }
 
-    fn iter() -> impl Iterator<Item = Amount> {
+    /// The amount that does the opposite of itself.
+    pub const fn reverse(self) -> Amount {
+        // TODO: This can be done more efficiently with bit-twiddling, but is it worth it...
+        match self {
+            Amount::Single => Amount::Reverse,
+            Amount::Double => Amount::Double,
+            Amount::Reverse => Amount::Single,
+        }
+    }
+
+    pub fn iter() -> impl Iterator<Item = Amount> {
         [Amount::Single, Amount::Double, Amount::Reverse].into_iter()
     }
 }
@@ -41,7 +53,8 @@ impl ops::Mul<Direction> for Amount {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(transparent)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Move {
     /// Packed field: `---aafff`
     data: u8,
@@ -66,9 +79,29 @@ impl Move {
         self.face().axis()
     }
 
+    /// The move that undoes itself.
+    pub const fn reverse(self) -> Self {
+        // TODO: This can be done more efficiently with bit-twiddling.
+        Self::new(self.face(), self.amount().reverse())
+    }
+
     /// Enumerates all possible moves.
     pub fn iter() -> impl Iterator<Item = Self> {
         Face::iter().flat_map(|face| Amount::iter().map(move |amount| Move::new(face, amount)))
+    }
+}
+
+pub fn reverse_alg<const N: usize>(mut alg: [Move; N]) -> [Move; N] {
+    alg.reverse();
+    alg.map(|mov| mov.reverse())
+}
+
+impl fmt::Debug for Move {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Move")
+            .field("face", &self.face())
+            .field("amount", &self.amount())
+            .finish()
     }
 }
 
@@ -84,19 +117,17 @@ impl fmt::Display for Move {
     }
 }
 
-#[macro_export]
-macro_rules! alg {
-    (@ $mov:tt) => { $mov };
-
-    ($($mov:tt)*) => {{
-        use $crate::mov::moves::*;
-        [$(alg!(@ $mov)),*]
-    }};
-
-}
-
 pub mod moves {
     macro_rules! generate_moves {
+        ([$($face:tt $amount:tt $name:ident),*]) => {
+            $(
+                pub const $name: Move = Move::new(
+                    generate_moves!(@face $face),
+                    generate_moves!(@amount $amount)
+                );
+            )*
+        };
+
         (@amount 1) => { Amount::Single };
         (@amount 2) => { Amount::Double };
         (@amount 3) => { Amount::Reverse };
@@ -107,15 +138,6 @@ pub mod moves {
         (@face L) => { Face::L };
         (@face D) => { Face::D };
         (@face B) => { Face::B };
-
-        ([$($face:tt $amount:tt $name:ident),*]) => {
-            $(
-                pub const $name: Move = Move::new(
-                    generate_moves!(@face $face),
-                    generate_moves!(@amount $amount)
-                );
-            )*
-        };
     }
 
     use super::Amount;
@@ -132,29 +154,21 @@ pub mod moves {
     ]);
 }
 
-pub mod algs {
-    use super::Move;
+#[macro_export]
+macro_rules! alg {
+    (@ $mov:tt) => { $mov };
 
-    pub const SEXY: [Move; 4] = alg!(R U RP UP);
-    pub const SLEDGEHAMMER: [Move; 4] = alg!(RP F R FP);
-
-    pub const T: [Move; 14] = alg!(R U RP UP RP F R2 UP RP UP R U RP FP);
-    pub const J: [Move; 13] = alg!(R U RP F R U RP UP RP FP R2 UP RP);
-    pub const U: [Move; 11] = U_A;
-    pub const U_A: [Move; 11] = alg!(R2 UP RP UP R U R U R UP R);
-    pub const U_B: [Move; 11] = alg!(RP U RP UP RP UP RP U R U R2);
-
-    pub const CHECKER: [Move; 6] = alg!(R2 L2 U2 D2 F2 B2);
-
-    // TODO: Concat or extend algs
-    // pub const J_AUF: [Move; 14] = [J, alg!(UP)].concat();
+    ($($mov:tt)*) => {{
+        use $crate::mov::moves::*;
+        [$(alg!(@ $mov)),*]
+    }};
 }
 
-#[cfg(test)]
-mod tests {
+#[cfg(feature = "quickcheck")]
+mod quickcheck_impl {
     use super::*;
-    use crate::cube::Cube;
-    use quickcheck::{Arbitrary, Gen, quickcheck};
+
+    use quickcheck::{Arbitrary, Gen};
 
     impl Arbitrary for Amount {
         fn arbitrary(g: &mut Gen) -> Self {
@@ -169,47 +183,5 @@ mod tests {
             let amount = Amount::arbitrary(g);
             Move::new(face, amount)
         }
-    }
-
-    quickcheck! {
-        fn fn_move_constructor_and_accessors_maintain_values(face: Face, amount: Amount) -> bool {
-            let mov = Move::new(face, amount);
-            mov.face() == face && mov.amount() == amount
-        }
-
-        fn fn_double_double_identity(cube: Cube, face: Face) -> bool {
-            let mov = Move::new(face, Amount::Double);
-            cube.mov([mov, mov]) == cube
-        }
-
-        fn fn_rrp_identity(cube: Cube) -> bool {
-            cube.mov(alg!(R RP)) == cube
-        }
-
-        fn fn_move_reverse_identity(cube: Cube, face: Face) -> bool {
-            let m1 = Move::new(face, Amount::Single);
-            let m2 = Move::new(face, Amount::Reverse);
-            cube.mov([m1, m2]) == cube
-        }
-
-        fn fn_double_t_identity(cube: Cube) -> bool {
-            cube.mov(alg!(R RP)) == cube
-        }
-
-        fn fn_single_double_equals_reverse(cube: Cube) -> bool {
-            cube.mov(alg!(R R2)) == cube.mov(alg!(RP))
-        }
-    }
-
-    #[test]
-    fn instance_all_basic_moves() {
-        for mov in Move::iter() {
-            insta::assert_debug_snapshot!(Cube::SOLVED.mov_single(mov))
-        }
-    }
-
-    #[test]
-    fn ua_ub_cancel() {
-        assert!(Cube::SOLVED.mov(algs::U_A).mov(algs::U_B).is_solved())
     }
 }
