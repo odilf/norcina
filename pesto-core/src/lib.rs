@@ -1,9 +1,6 @@
-use norcina::Event;
+mod db;
+pub use db::Db;
 
-pub enum CustomEvent {
-    Official(Event),
-    Unofficial {
-        name: String,
-        scramble: Option<Event>,
-    },
-}
+pub mod event;
+pub mod solve;
+pub use solve::Solve;

@@ -45,6 +45,7 @@
               toolchain
               pkgs.rust-analyzer
               pkgs.cargo-nextest
+              pkgs.sqlite
             ];
           };
         };

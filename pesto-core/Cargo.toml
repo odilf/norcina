@@ -5,3 +5,7 @@ edition = "2024"
 
 [dependencies]
 norcina = { path = "../norcina" }
+rusqlite = { version = "0.36.0", features = ["modern_sqlite"] }
+color-eyre.workspace = true
+directories = "6.0.0"
+jiff = "0.2.15"

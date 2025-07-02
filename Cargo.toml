@@ -1,5 +1,6 @@
 [workspace]
-members = [ "norcina",
+members = [
+  "norcina",
   "norcina-core",
   "norcina-cube-n",
   "norcina-cube3",

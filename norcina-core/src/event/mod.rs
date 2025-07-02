@@ -3,9 +3,10 @@ use core::fmt;
 /// Official WCA events.
 ///
 /// As shown here: https://www.worldcubeassociation.org/results/records
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Event {
     Cube2,
+    #[default]
     Cube3,
     Cube4,
     Cube5,
@@ -28,7 +29,7 @@ impl Event {
     /// The WCA id of the event.
     ///
     /// As used in "https://www.worldcubeassociation.org/results/records?event_id={id}" <- here
-    pub fn id(self) -> &'static str {
+    pub fn str_id(self) -> &'static str {
         match self {
             Self::Cube2 => "222",
             Self::Cube3 => "333",
@@ -81,7 +82,7 @@ impl Event {
             Self::Cube2 => "2x2",
             Self::Cube3 => "3x3",
             Self::Cube4 => "4x4",
-            Self::Cube5 => "5x5,",
+            Self::Cube5 => "5x5",
             Self::Cube6 => "6x6",
             Self::Cube7 => "7x7",
             Self::Blind3 => "3BLD",
@@ -95,6 +96,48 @@ impl Event {
             Self::Pyraminx => "Pyraminx",
             Self::Skewb => "Skewb",
             Self::Square1 => "Square-1",
+        }
+    }
+
+    pub const ALL: [Event; 17] = [
+        Self::Cube2,
+        Self::Cube3,
+        Self::Cube4,
+        Self::Cube5,
+        Self::Cube6,
+        Self::Cube7,
+        Self::Blind3,
+        Self::Blind4,
+        Self::Blind5,
+        Self::Multiblind,
+        Self::FewestMoves,
+        Self::OneHanded,
+        Self::Clock,
+        Self::Megaminx,
+        Self::Pyraminx,
+        Self::Skewb,
+        Self::Square1,
+    ];
+
+    pub const fn id(self) -> u8 {
+        match self {
+            Self::Cube2 => 0,
+            Self::Cube3 => 1,
+            Self::Cube4 => 2,
+            Self::Cube5 => 3,
+            Self::Cube6 => 4,
+            Self::Cube7 => 5,
+            Self::Blind3 => 6,
+            Self::Blind4 => 7,
+            Self::Blind5 => 8,
+            Self::Multiblind => 9,
+            Self::FewestMoves => 10,
+            Self::OneHanded => 11,
+            Self::Clock => 12,
+            Self::Megaminx => 13,
+            Self::Pyraminx => 14,
+            Self::Skewb => 15,
+            Self::Square1 => 16,
         }
     }
 }
