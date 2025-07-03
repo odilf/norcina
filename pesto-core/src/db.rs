@@ -1,5 +1,5 @@
 use std::{
-    iter,
+    fs, iter,
     path::{Path, PathBuf},
     time::Duration,
 };
@@ -25,11 +25,15 @@ impl Db {
 
     pub fn new_at_path(path: Option<impl AsRef<Path>>) -> eyre::Result<Self> {
         let conn = if let Some(path) = path {
+            fs::create_dir_all(path.as_ref().parent().unwrap())?;
             Connection::open(path)
         } else if cfg!(debug_assertions) {
             Connection::open("./main.db")
         } else {
-            Connection::open(proj_dirs().data_dir().join("main.db"))
+            let proj_dirs = proj_dirs();
+            let dir = proj_dirs.data_dir();
+            fs::create_dir_all(&dir)?;
+            Connection::open(dir.join("main.db"))
         }?;
 
         conn.execute_batch(
