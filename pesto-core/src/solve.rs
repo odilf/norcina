@@ -1,9 +1,6 @@
 use color_eyre::eyre;
-use jiff::{Zoned, civil::DateTime};
-use std::{
-    fmt,
-    time::{Duration, SystemTime},
-};
+use jiff::Zoned;
+use std::{fmt, time::Duration};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Penalty {

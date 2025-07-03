@@ -1,5 +1,3 @@
-use std::{iter, time::Duration};
-
 use color_eyre::eyre;
 use pesto_core::{
     Db,

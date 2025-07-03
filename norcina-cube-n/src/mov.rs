@@ -48,6 +48,7 @@ impl ops::Mul<Direction> for Amount {
         // TODO: Is it possible to remove this branch?
         match rhs {
             Direction::Positive => self,
+            #[allow(clippy::suspicious_arithmetic_impl)]
             Direction::Negative => Self::from_u8(4 - self.u8()),
         }
     }

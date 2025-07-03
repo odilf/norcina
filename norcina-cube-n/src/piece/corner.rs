@@ -143,7 +143,9 @@ impl CornerPosition {
         ]
     }
 
-    // SAFETY: index must be between 0 and 7.
+    /// # Safety
+    ///
+    /// Index must be between 0 and 7.
     pub const unsafe fn from_index_unchecked(index: u8) -> Self {
         debug_assert!(index < 8);
         // SAFETY: Numbers between 0 and 7 are valid corner positions.
@@ -182,9 +184,9 @@ impl CornerPosition {
         // 2 0b10 -> 1
         // 3 0b11 -> 2
         // huh, just count ones... again.
-        // Or, (x + 1) / 2, which I'm pretty sure I've done elsewhere...
+        // Or, (x + 1) / 2, aka, div_ceil.
         // diff_coords.count_ones() as u8
-        (diff_coords + 1) / 2
+        diff_coords.div_ceil(2)
     }
 
     pub const ALL: [CornerPosition; 8] = [
@@ -259,7 +261,7 @@ pub fn move_pieces(corners: [Corner; 8], mov: Move) -> [Corner; 8] {
         // - Unchanged if move is on orientation axis
         // - Otherwise, conjecture for how much to add.
         // For the first part, this value is 0 if move is on x-axis, 1 otherwise.
-        let is_not_on_x_axis = (mov.axis().u8() + 1) / 2;
+        let is_not_on_x_axis = mov.axis().u8().div_ceil(2);
         assert!(
             if mov.face().axis() == Axis::X {
                 is_not_on_x_axis == 0
@@ -273,10 +275,10 @@ pub fn move_pieces(corners: [Corner; 8], mov: Move) -> [Corner; 8] {
         // For the second part, my conjecture is that it adds 2 if the
         // xor of the position is 0, otherwise 1
         let orientation_diff = is_not_on_x_axis
-            << (position.parity() as u8 ^ (mov.amount().u8() & 0b1) ^ (mov.axis().u8() >> 1));
+            << (position.parity() ^ (mov.amount().u8() & 0b1) ^ (mov.axis().u8() >> 1));
 
         // TODO: Maybe we can inline this mo'
-        let mut out = corners[i as usize];
+        let mut out = corners[i];
         // TODO: Does this work how I think?
         out.data = (out.data + (orientation_diff << 3)) % (3 << 3);
         out
@@ -311,6 +313,7 @@ mod quickcheck_impl {
             let z = Direction::arbitrary(g);
             let orientation = Axis::arbitrary(g);
             Corner {
+                #[allow(clippy::identity_op)]
                 data: (x.u8() << 0) + (y.u8() << 1) + (z.u8() << 2) + (orientation.u8() << 3),
             }
         }
@@ -322,6 +325,7 @@ mod quickcheck_impl {
             let y = Direction::arbitrary(g);
             let z = Direction::arbitrary(g);
             CornerPosition {
+                #[allow(clippy::identity_op)]
                 data: (x.u8() << 0) + (y.u8() << 1) + (z.u8() << 2),
             }
         }

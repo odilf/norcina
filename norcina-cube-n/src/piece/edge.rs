@@ -129,6 +129,7 @@ impl EdgePosition {
         };
 
         EdgePosition {
+            #[allow(clippy::identity_op)]
             data: (a.u8() << 0) + (b.u8() << 1) + (normal.u8() << 2),
         }
     }
@@ -145,7 +146,9 @@ impl EdgePosition {
         edges[self.data as usize]
     }
 
-    // SAFETY: index must be between 0 and 11.
+    /// # Safety
+    ///
+    /// Index must be between 0 and 11.
     pub unsafe fn from_index_unchecked(index: u8) -> EdgePosition {
         debug_assert!(index < 12);
         // SAFETY: Numbers between 0 and 11 are valid edge positions.

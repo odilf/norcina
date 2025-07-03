@@ -1,5 +1,4 @@
 use color_eyre::eyre;
-use norcina::Event;
 use pesto_core::{
     Db,
     event::{MaybeCustomEvent, Session},
@@ -8,7 +7,7 @@ use ratatui::{
     prelude::{Buffer, Rect},
     style::{Style, Stylize as _, palette::tailwind::SLATE},
     text::Text,
-    widgets::{Block, HighlightSpacing, List, ListItem, ListState, StatefulWidget, Widget},
+    widgets::{Block, HighlightSpacing, List, ListState, StatefulWidget, Widget},
 };
 
 #[derive(Debug, Clone)]

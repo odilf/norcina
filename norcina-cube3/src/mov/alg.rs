@@ -1,34 +1,33 @@
 pub mod algs {
-    macro_rules! declare_alg {
-        ($name:tt = $($alg:tt)*) => {
-            declare_alg!(@inner
-                (name=$name)
-                (length=0)
-                (acc=[])
-                (rest=[$($alg),*])
-            );
-        };
+    // macro_rules! declare_alg {
+    //     ($name:tt = $($alg:tt)*) => {
+    //         declare_alg!(@inner
+    //             (name=$name)
+    //             (length=0)
+    //             (acc=[])
+    //             (rest=[$($alg),*])
+    //         );
+    //     };
 
-        (@inner (name=$name:ident) (length=$length:expr) (acc=[$($alg:tt),*]) (rest=[ ])) => {
-            use $crate::mov::moves::*;
-            pub const $name: [Move; $length] = [$($alg),*];
-        };
+    //     (@inner (name=$name:ident) (length=$length:expr) (acc=[$($alg:tt),*]) (rest=[ ])) => {
+    //         use $crate::mov::moves::*;
+    //         pub const $name: [Move; $length] = [$($alg),*];
+    //     };
 
-        (@inner
-            (name=$name:tt)
-            (length=$length:expr)
-            (acc=[$($acc:tt)*])
-            (rest=[$alg_head:tt $(, $($alg_tail:tt)+)? ])
-        ) => {
-            declare_alg!(@inner
-                (name=$name)
-                (length=$length + 1)
-                (acc=[$($acc)* $alg_head])
-                (rest=[ $($($alg_tail),+)? ])
-            );
-        };
-
-    }
+    //     (@inner
+    //         (name=$name:tt)
+    //         (length=$length:expr)
+    //         (acc=[$($acc:tt)*])
+    //         (rest=[$alg_head:tt $(, $($alg_tail:tt)+)? ])
+    //     ) => {
+    //         declare_alg!(@inner
+    //             (name=$name)
+    //             (length=$length + 1)
+    //             (acc=[$($acc)* $alg_head])
+    //             (rest=[ $($($alg_tail),+)? ])
+    //         );
+    //     };
+    // }
 
     use norcina_cube_n::alg;
 

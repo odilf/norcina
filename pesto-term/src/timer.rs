@@ -1,7 +1,4 @@
-use std::{
-    fmt,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use ratatui::{
     crossterm::style::Color,
@@ -101,17 +98,17 @@ impl Timer {
         min_press_duration: Duration,
         min_stop_duration: Duration,
     ) {
-        let (duration, color) = match self {
-            &Timer::Idle { .. } => (Duration::ZERO, Color::White),
-            &Timer::Pressed { press_start } => {
+        let (duration, color) = match *self {
+            Timer::Idle => (Duration::ZERO, Color::White),
+            Timer::Pressed { press_start } => {
                 if Instant::now().duration_since(press_start) < min_press_duration {
                     (Duration::ZERO, Color::Yellow)
                 } else {
                     (Duration::ZERO, Color::Green)
                 }
             }
-            &Timer::Running { start } => (Instant::now().duration_since(start), Color::Blue),
-            &Timer::Stopped {
+            Timer::Running { start } => (Instant::now().duration_since(start), Color::Blue),
+            Timer::Stopped {
                 time,
                 stopped_instant,
             } => {

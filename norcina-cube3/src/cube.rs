@@ -22,12 +22,12 @@ impl Cube {
     };
 
     pub fn random_with_rng(rng: &mut impl rand::Rng) -> Self {
-        let mut corners = Corner::random(rng);
-        let mut edges = Edge::random(rng);
-
+        std::convert::identity(rng);
         todo!("Fix swaps");
+        //     let mut corners = Corner::random(rng);
+        //     let mut edges = Edge::random(rng);
 
-        Cube { corners, edges }
+        //     Cube { corners, edges }
     }
 
     pub fn random() -> Self {

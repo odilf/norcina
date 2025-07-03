@@ -10,7 +10,7 @@ use ratatui::{
     text::Line,
     widgets::{Block, Paragraph, Widget, Wrap},
 };
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Duration, Instant};
 
 mod timer;
 use timer::Timer;
@@ -220,7 +220,7 @@ impl Widget for &mut App {
         .spacing(1)
         .margin(1);
 
-        let [scramble_rect, timer_rect, extra_rect] = layout_center.areas(center_rect);
+        let [scramble_rect, timer_rect, _extra_rect] = layout_center.areas(center_rect);
 
         Paragraph::new(vec![
             Line::from(""),

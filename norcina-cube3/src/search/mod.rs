@@ -52,7 +52,7 @@ pub fn solve_manhattan(state: Cube) -> Vec<Move> {
         state,
         // // SAFETY: `manhattan_distance` returns a u8 which is always representable by a n f32
         // |cube| unsafe { NotNan::new_unchecked(manhattan_distance(cube) as f32) },
-        |cube| manhattan_distance(cube),
+        manhattan_distance,
         Cube::is_solved,
     )
 }

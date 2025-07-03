@@ -34,7 +34,9 @@ impl Direction {
         Direction::from_bool(value != 0)
     }
 
-    /// SAFETY: `value` need to be either 0 or 1.
+    /// # Safety
+    ///
+    /// `value` needs to be either 0 or 1.
     #[inline]
     pub const unsafe fn from_u8_unchecked(value: u8) -> Direction {
         debug_assert!(value < 2);
@@ -91,7 +93,9 @@ impl Axis {
         unsafe { Axis::from_u8_unchecked(value % 3) }
     }
 
-    /// SAFETY: value needs to be either 0, 1 or 2.
+    /// # Safety
+    ///
+    /// Value needs to be either 0, 1 or 2.
     pub const unsafe fn from_u8_unchecked(axis_index: u8) -> Axis {
         debug_assert!(axis_index < 3);
         unsafe { transmute(axis_index) }

@@ -1,7 +1,7 @@
 use std::{
     iter,
     path::{Path, PathBuf},
-    time::{Duration, UNIX_EPOCH},
+    time::Duration,
 };
 
 use color_eyre::eyre::{self, Context};
@@ -26,12 +26,10 @@ impl Db {
     pub fn new_at_path(path: Option<impl AsRef<Path>>) -> eyre::Result<Self> {
         let conn = if let Some(path) = path {
             Connection::open(path)
+        } else if cfg!(debug_assertions) {
+            Connection::open("./main.db")
         } else {
-            if cfg!(debug_assertions) {
-                Connection::open(proj_dirs().data_dir().join("/main.db"))
-            } else {
-                Connection::open("./main.db")
-            }
+            Connection::open(proj_dirs().data_dir().join("main.db"))
         }?;
 
         conn.execute_batch(
@@ -81,11 +79,7 @@ impl Db {
                     scramble_type: official_event_from_sql(row.get_ref(2)?)?,
                 })
             })?
-            .map(|event| {
-                event
-                    .map(|event| MaybeCustomEvent::Unofficial(event))
-                    .map_err(Into::into)
-            });
+            .map(|event| event.map(MaybeCustomEvent::Unofficial).map_err(Into::into));
 
         let official_events = Event::ALL
             .into_iter()
@@ -110,7 +104,6 @@ impl Db {
         })?;
 
         iter::once(Ok(Session::Main))
-            .into_iter()
             .chain(iter.map(|v| v.map_err(Into::into)))
             .collect()
     }

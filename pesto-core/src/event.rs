@@ -73,7 +73,7 @@ impl EventSessionList {
     pub fn events(&self) -> impl Iterator<Item = MaybeCustomEvent> {
         Event::ALL
             .into_iter()
-            .map(|event| MaybeCustomEvent::Official(event))
+            .map(MaybeCustomEvent::Official)
             .chain(
                 self.custom_events
                     .iter()
