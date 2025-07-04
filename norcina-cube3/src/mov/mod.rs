@@ -50,7 +50,7 @@ mod tests {
     #[test]
     fn instance_all_basic_moves() {
         for mov in Move::iter() {
-            dbg!(mov);
+            println!("Move is {mov}");
             insta::assert_debug_snapshot!(Cube::SOLVED.mov_single(mov))
         }
     }
@@ -59,8 +59,8 @@ mod tests {
     fn ua_ub_cancel() {
         assert!(
             Cube::SOLVED
-                .mov(algs::oll::U_A)
-                .mov(algs::oll::U_B)
+                .mov(algs::pll::U_A)
+                .mov(algs::pll::U_B)
                 .is_solved()
         )
     }

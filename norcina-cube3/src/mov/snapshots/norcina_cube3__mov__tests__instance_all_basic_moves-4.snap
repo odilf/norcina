@@ -4,12 +4,12 @@ expression: "Cube::SOLVED.mov_single(mov)"
 ---
 Cube {
     corners: [
-        RUB (2) is at RUF,
-        RUF (1) is at LUF,
+        RUB (0) is at RUF,
+        RUF (0) is at LUF,
         RDF (0) is at RDF,
         LDF (0) is at LDF,
-        LUB (1) is at RUB,
-        LUF (2) is at LUB,
+        LUB (0) is at RUB,
+        LUF (0) is at LUB,
         RDB (0) is at RDB,
         LDB (0) is at LDB,
     ],

@@ -70,6 +70,11 @@ impl Edge {
         unsafe { EdgePosition::from_index_unchecked(self.data & 0b01111) }
     }
 
+    #[inline]
+    pub fn set_oriented(&mut self, is_oriented: bool) {
+        self.data = self.data ^ 0b01111 + ((is_oriented as u8 ^ 0b1) << 4);
+    }
+
     /// Returns a possible set of 12 edges.
     ///
     /// The orientation parity is always positive/0/false.
@@ -82,14 +87,34 @@ impl Edge {
         let mut final_orientation = false;
         for corner in &mut out[0..11] {
             let orientation = rng.random_bool(0.5);
-            corner.data += (orientation as u8) << 3;
+            corner.data += (orientation as u8) << 4;
             final_orientation ^= orientation;
         }
 
         // TODO: Does this work?
-        out[11].data += (final_orientation as u8) << 3;
+        out[11].data ^= (final_orientation as u8) << 4;
 
         out
+    }
+
+    pub fn count_swaps(edges: [Edge; 12]) -> u8 {
+        let mut visited = [false; 12];
+        let mut output = 0;
+        while let Some((start_position, start_piece)) =
+            visited.iter().enumerate().find_map(|(i, visited)| {
+                (!visited).then_some((EdgePosition::from_index(i as u8), edges[i]))
+            })
+        {
+            visited[start_position.u8() as usize] = true;
+            let mut current = start_piece;
+            while current.position() != start_position {
+                output += 1;
+                visited[current.position().u8() as usize] = true;
+                current = edges[current.position().u8() as usize];
+            }
+        }
+
+        output
     }
 }
 
@@ -239,6 +264,7 @@ impl EdgePosition {
         EdgePosition::from_index(11),
     ];
 
+    #[inline]
     pub const fn index(self) -> u8 {
         // TODO: Maybe transmute
         self.data
@@ -248,6 +274,11 @@ impl EdgePosition {
         Edge {
             data: self.data + (orientation.u8() << 4),
         }
+    }
+
+    #[inline]
+    pub fn u8(&self) -> u8 {
+        self.data
     }
 }
 

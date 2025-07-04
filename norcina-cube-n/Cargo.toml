@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+norcina-core = { path = "../norcina-core" }
 quickcheck = { workspace = true, optional = true }
 rand.workspace = true
 

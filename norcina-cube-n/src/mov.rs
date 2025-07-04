@@ -80,21 +80,17 @@ impl Move {
         self.face().axis()
     }
 
-    /// The move that undoes itself.
-    pub const fn reverse(self) -> Self {
-        // TODO: This can be done more efficiently with bit-twiddling.
-        Self::new(self.face(), self.amount().reverse())
-    }
-
     /// Enumerates all possible moves.
     pub fn iter() -> impl Iterator<Item = Self> {
         Face::iter().flat_map(|face| Amount::iter().map(move |amount| Move::new(face, amount)))
     }
-}
 
-pub fn reverse_alg<const N: usize>(mut alg: [Move; N]) -> [Move; N] {
-    alg.reverse();
-    alg.map(|mov| mov.reverse())
+    pub const ALL: [Move; 18] = {
+        use moves::*;
+        [
+            R, R2, RP, U, U2, UP, F, F2, FP, L, L2, LP, D, D2, DP, B, B2, BP,
+        ]
+    };
 }
 
 impl fmt::Debug for Move {
@@ -115,6 +111,14 @@ impl fmt::Display for Move {
         };
 
         write!(f, "{}{}", self.face(), amount_str)
+    }
+}
+
+impl norcina_core::Move for Move {}
+impl norcina_core::mov::InvertibleMove for Move {
+    fn inverse(&self) -> Self {
+        // TODO: This can be done more efficiently with bit-twiddling.
+        Self::new(self.face(), self.amount().reverse())
     }
 }
 

@@ -43,7 +43,7 @@ pub mod algs {
     // pub const SEXY: [Move; 4] = alg![R U RP UP];
     pub const SLEDGEHAMMER: [Move; 4] = alg!(RP F R FP);
 
-    pub mod oll {
+    pub mod pll {
         use super::*;
         pub const T: [Move; 14] = alg!(R U RP UP RP F R2 UP RP UP R U RP FP);
         pub const J: [Move; 13] = alg!(R U RP F R U RP UP RP FP R2 UP RP);

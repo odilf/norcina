@@ -46,6 +46,7 @@
               pkgs.rust-analyzer
               pkgs.cargo-nextest
               pkgs.sqlite
+              pkgs.cargo-flamegraph
             ];
           };
         };

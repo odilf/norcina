@@ -7,3 +7,5 @@ edition = "2024"
 norcina-core = { path = "../norcina-core" }
 norcina-cube-n = { path = "../norcina-cube-n" }
 norcina-cube3 = { path = "../norcina-cube3" }
+enum_dispatch.workspace = true
+rand.workspace = true

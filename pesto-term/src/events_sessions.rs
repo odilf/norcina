@@ -40,11 +40,14 @@ impl EventSessions {
             items: db
                 .get_events_and_sessions()?
                 .into_iter()
-                .map(|(event, sessions)| EventItem {
-                    event,
-                    sessions,
-                    session_list_state: ListState::default().with_selected(Some(0)),
-                    scramble: Some("R U R' U'".to_string()),
+                .map(|(event, sessions)| {
+                    let scramble = event.gen_scramble(&mut rand::rng());
+                    EventItem {
+                        event,
+                        sessions,
+                        session_list_state: ListState::default().with_selected(Some(0)),
+                        scramble,
+                    }
                 })
                 .collect(),
             state: ListState::default().with_selected(Some(1)),

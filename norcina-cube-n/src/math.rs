@@ -93,6 +93,13 @@ impl Axis {
         unsafe { Axis::from_u8_unchecked(value % 3) }
     }
 
+    #[inline]
+    pub const fn from_i8_mod3(value: i8) -> Axis {
+        // SAFETY: We have taken modulo 3, so the possible values are 0, 1 or 2
+        // (`rem_eculid` always has positive results, so the `as u8` is also sound).
+        unsafe { Axis::from_u8_unchecked(value.rem_euclid(3) as u8) }
+    }
+
     /// # Safety
     ///
     /// Value needs to be either 0, 1 or 2.

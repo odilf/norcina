@@ -404,6 +404,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48c757948c5ede0e46177b7add2e67155f70e33c07fea8284df6576da70b3719"
 
 [[package]]
+name = "enum_dispatch"
+version = "0.3.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa18ce2bc66555b3218614519ac839ddb759a7d6720732f979ef8d13be147ecd"
+dependencies = [
+ "once_cell",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "env_logger"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -773,19 +785,25 @@ dependencies = [
 name = "norcina"
 version = "0.1.0"
 dependencies = [
+ "enum_dispatch",
  "norcina-core",
  "norcina-cube-n",
  "norcina-cube3",
+ "rand 0.9.1",
 ]
 
 [[package]]
 name = "norcina-core"
 version = "0.1.0"
+dependencies = [
+ "enum_dispatch",
+]
 
 [[package]]
 name = "norcina-cube-n"
 version = "0.1.0"
 dependencies = [
+ "norcina-core",
  "quickcheck",
  "rand 0.9.1",
 ]
@@ -909,6 +927,7 @@ dependencies = [
  "directories",
  "jiff",
  "norcina",
+ "rand 0.9.1",
  "rusqlite",
 ]
 
@@ -921,6 +940,7 @@ dependencies = [
  "device_query",
  "norcina",
  "pesto-core",
+ "rand 0.9.1",
  "ratatui",
  "tui-big-text",
 ]

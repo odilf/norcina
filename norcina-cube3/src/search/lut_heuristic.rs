@@ -1,6 +1,6 @@
-use std::{fs, io, path::PathBuf};
-
 use color_eyre::eyre::{self, WrapErr as _};
+use norcina_core::math::{comb, fac};
+use std::{fs, io, path::PathBuf};
 
 use crate::{
     Cube, Move,
@@ -96,19 +96,7 @@ impl TableHeuristic {
     }
 }
 
-const fn factorial(n: u32) -> u32 {
-    if n == 0 { 1 } else { n * factorial(n - 1) }
-}
-
-const fn perms(choose: u32, total: u32) -> u32 {
-    if choose == 0 {
-        1
-    } else {
-        total * perms(choose - 1, total - 1)
-    }
-}
-
-const CORNER_PERMUTATIONS: u32 = factorial(8);
+const CORNER_PERMUTATIONS: u32 = fac(8);
 const CORNER_ORIENTATIONS: u32 = 3u32.pow(7);
 const CORNER_STATES: u32 = CORNER_ORIENTATIONS * CORNER_PERMUTATIONS;
 
@@ -208,7 +196,7 @@ fn corners_from_index(index: u32) -> [Corner; 8] {
     out
 }
 
-const HALF_EDGE_PERMUTATIONS: u32 = perms(6, 12);
+const HALF_EDGE_PERMUTATIONS: u32 = comb(12, 6);
 const HALF_EDGE_ORIENTATIONS: u32 = 2u32.pow(6);
 const HALF_EDGE_STATES: u32 = HALF_EDGE_PERMUTATIONS * HALF_EDGE_ORIENTATIONS;
 

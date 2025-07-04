@@ -22,12 +22,37 @@ impl Cube {
     };
 
     pub fn random_with_rng(rng: &mut impl rand::Rng) -> Self {
-        std::convert::identity(rng);
-        todo!("Fix swaps");
-        //     let mut corners = Corner::random(rng);
-        //     let mut edges = Edge::random(rng);
+        let mut corners = Corner::random(rng);
+        let mut edges = Edge::random(rng);
 
-        //     Cube { corners, edges }
+        let corner_swap_parity = Corner::count_swaps(corners) % 2;
+        let edge_swap_parity = Edge::count_swaps(edges) % 2;
+
+        dbg!(corner_swap_parity, edge_swap_parity);
+
+        if corner_swap_parity != edge_swap_parity {
+            // TODO: Could we always swap the same two arbtirary pieces, or
+            // would that stop it from being uniform distribution?
+            if rng.random() {
+                let i = rng.random_range(0..8);
+                let mut j = rng.random_range(0..7);
+                if j >= i {
+                    j += 1;
+                }
+
+                corners.swap(i, j);
+            } else {
+                let i = rng.random_range(0..12);
+                let mut j = rng.random_range(0..11);
+                if j >= i {
+                    j += 1;
+                }
+
+                edges.swap(i, j);
+            }
+        }
+
+        Cube { corners, edges }
     }
 
     pub fn random() -> Self {

@@ -28,6 +28,8 @@ impl Corner {
         Corner::solved(7),
     ];
 
+    pub const ORIENTATION_AXIS: Axis = Axis::Y;
+
     #[inline]
     pub const fn x(self) -> Direction {
         Direction::from_bool(self.data & 0b001 != 0)
@@ -43,12 +45,24 @@ impl Corner {
         Direction::from_bool(self.data & 0b100 != 0)
     }
 
+    /// How many counterclockwise twists are needed until the corner's orientation axis matches the physical orientation axis.
+    /// Equivalently, how many clockwise twists are needed to get an oriented corner to the current state.
+    ///
+    /// In other words, every time you rotate a twist clockwise, you add one to the orientation.
+    ///
+    /// The orientation axis is by convention the Y axis (see [`Self::ORIENTATION_AXIS`]).
+    // TODO: This shouldn't really return an axis.
     #[inline]
     pub const fn orientation(self) -> Axis {
         let v = (self.data >> 3) & 0b11;
         debug_assert!(v < 3);
         // SAFETY: orientation bits are guaranteed to be either 0, 1 or 2.
         unsafe { Axis::from_u8_unchecked(v) }
+    }
+
+    #[inline]
+    pub fn set_orientation(&mut self, orientation: Axis) {
+        self.data = self.data & 0b00111 ^ (orientation.u8() << 3);
     }
 
     #[inline]
@@ -74,6 +88,11 @@ impl Corner {
         unsafe { transmute(self.data & 0b00111) }
     }
 
+    #[inline]
+    pub fn is_oriented(&self) -> bool {
+        self.orientation().u8() == 0
+    }
+
     /// Returns a possible set of 8 corners.
     ///
     /// The sum of the orientations is a multiple of 3.
@@ -83,17 +102,36 @@ impl Corner {
         let mut out = Self::SOLVED;
         out.shuffle(rng);
 
-        let mut total_orientaiton = 0;
+        let mut orientation_sum = 0;
         for corner in &mut out[0..7] {
             let orientation = rng.random_range(0..3);
             corner.data += orientation << 3;
-            total_orientaiton += orientation;
+            orientation_sum += orientation;
         }
 
-        // TODO: Does this work?
-        out[7].data += (total_orientaiton.wrapping_neg() % 3) << 3;
-
+        // TODO: Is this actually uniform?
+        out[7].data += ((-(orientation_sum as i8) % 3) << 3) as u8;
         out
+    }
+
+    pub fn count_swaps(corners: [Corner; 8]) -> u8 {
+        let mut visited = [false; 8];
+        let mut output = 0;
+        while let Some((start_position, start_corner)) =
+            visited.iter().enumerate().find_map(|(i, visited)| {
+                (!visited).then_some((CornerPosition::from_index(i as u8), corners[i]))
+            })
+        {
+            visited[start_position.u8() as usize] = true;
+            let mut current = start_corner;
+            while current.position() != start_position {
+                output += 1;
+                visited[current.position().u8() as usize] = true;
+                current = corners[current.position().u8() as usize];
+            }
+        }
+
+        output
     }
 }
 
@@ -213,21 +251,38 @@ impl CornerPosition {
 }
 
 pub fn sticker(corner: Corner, position: CornerPosition, face: Face) -> Sticker {
-    // First, we figure out the index of the face's axis for the given position:
-    let face_index = if position.parity() == 0 {
-        (3 + face.axis().u8() - corner.orientation().u8()) % 3
-    } else {
-        (6 - face.axis().u8() - corner.orientation().u8()) % 3
-    };
+    // The only reason we care about the original position is for the parity.
+    // Namely, if it's 0 increase in axis means *counterclockwise* rotation, and
+    // if it's 1 it means *clockwise* rotation.
+    let position_parity = position.parity() as i8;
+    let ppar_sign = position_parity ^ (position_parity - 1); // 0->-1, 1->1
+    // With the position parity, we can get the orientation index of the face
+    // we are inspecting (so not the actual sticker). This is the index of the
+    // face that we would want to retrieve from the original piece, if it was
+    // oriented.
+    //
+    // In short:
+    // Even         Odd
+    // X (0) -> 1   X (0) -> 2
+    // Y (1) -> 0   Y (1) -> 0
+    // Z (2) -> 2   Z (2) -> 1
+    let face_orientation_index =
+        -ppar_sign * Corner::ORIENTATION_AXIS.u8() as i8 + ppar_sign * face.axis().u8() as i8;
 
-    // Then, we take that index from the corner.
-    let axis = Axis::from_u8(if corner.position().parity() == 0 {
-        face_index
-    } else {
-        (3 - face_index) % 3
-    });
+    // Now, we need to add the actual orientation.
+    let oriented_foi = face_orientation_index - corner.orientation().u8() as i8;
 
-    // let axis = Axis::from_u8((face.axis().u8() + axis_diff) % 3);
+    // Finally, from the index we can find the axis we want to inspect.
+    //
+    // In short:
+    // Even         Odd
+    // 0 -> Y (1)   0 -> Y (1)
+    // 1 -> X (0)   1 -> Z (2)
+    // 2 -> Z (2)   2 -> X (0)
+    let corner_position_parity = corner.position().parity() as i8;
+    let cpar_sign = corner_position_parity ^ (corner_position_parity - 1); // 0->-1, 1->1
+
+    let axis = Axis::from_i8_mod3(Corner::ORIENTATION_AXIS.u8() as i8 + cpar_sign * oriented_foi);
     Face::new(axis, corner.direction_on_axis(axis))
 }
 
@@ -257,24 +312,25 @@ pub fn move_pieces(corners: [Corner; 8], mov: Move) -> [Corner; 8] {
         let temp = ((i >> a) ^ (i >> b)) & 0b1;
         let i = i ^ (((temp ^ 0b1) << a) | (temp << b));
 
-        // Corner twists:
+        // # Corner twists:
         // - Unchanged if move is on orientation axis
         // - Otherwise, conjecture for how much to add.
+
         // For the first part, this value is 0 if move is on x-axis, 1 otherwise.
-        let is_not_on_x_axis = mov.axis().u8().div_ceil(2);
+        let is_not_on_y_axis = mov.axis().u8() & 0b1 ^ 0b1;
         assert!(
-            if mov.face().axis() == Axis::X {
-                is_not_on_x_axis == 0
+            if mov.face().axis() == Corner::ORIENTATION_AXIS {
+                is_not_on_y_axis == 0
             } else {
-                is_not_on_x_axis == 1
+                is_not_on_y_axis == 1
             },
-            "{is_not_on_x_axis} but is on {:?}",
+            "{is_not_on_y_axis} but is on {:?}",
             mov.face().axis()
         );
 
         // For the second part, my conjecture is that it adds 2 if the
         // xor of the position is 0, otherwise 1
-        let orientation_diff = is_not_on_x_axis
+        let orientation_diff = is_not_on_y_axis
             << (position.parity() ^ (mov.amount().u8() & 0b1) ^ (mov.axis().u8() >> 1));
 
         // TODO: Maybe we can inline this mo'
@@ -334,6 +390,8 @@ mod quickcheck_impl {
 
 #[cfg(all(test, feature = "quickcheck"))]
 mod tests {
+    use std::collections::HashSet;
+
     use quickcheck::quickcheck;
 
     use super::*;
@@ -360,5 +418,40 @@ mod tests {
 
             bins == [1, 6, 1]
         }
+
+        fn swapping_n_corners_makes_fn_count_swaps_return_n(swaps: Vec<(u8, u8)>) -> bool {
+            let mut corners = Corner::SOLVED;
+            let mut num_swaps = 0;
+            let mut visited = HashSet::new();
+            for (i, j) in swaps.into_iter() {
+                let i = i % 8;
+                let j = j % 8;
+                let [i, j] = {
+                    let mut xs = [i, j];
+                    xs.sort();
+                    xs
+                };
+
+                if i == j {
+                    continue;
+                }
+                if !visited.insert([i, j]) {
+                    continue;
+                }
+
+                corners.swap(i as usize, j as usize);
+                num_swaps += 1;
+            }
+
+            let counted = Corner::count_swaps(corners);
+
+            // Check parity and upper bound (upper bound since we might add redundant swaps when adding arbitrary swaps).
+            (counted <= num_swaps) && (counted % 2 == num_swaps % 2)
+        }
+    }
+
+    #[test]
+    fn no_swaps_makes_fn_count_swaps_return_0() {
+        assert_eq!(Corner::count_swaps(Corner::SOLVED), 0)
     }
 }

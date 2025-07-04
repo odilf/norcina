@@ -6,12 +6,12 @@ Cube {
     corners: [
         RUF (0) is at RUF,
         LUF (0) is at LUF,
-        RDB (1) is at RDF,
-        RDF (2) is at LDF,
+        RDB (0) is at RDF,
+        RDF (0) is at LDF,
         RUB (0) is at RUB,
         LUB (0) is at LUB,
-        LDB (2) is at RDB,
-        LDF (1) is at LDB,
+        LDB (0) is at RDB,
+        LDF (0) is at LDB,
     ],
     edges: [
         UF (✓) is at UF,

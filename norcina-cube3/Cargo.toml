@@ -18,6 +18,7 @@ insta.workspace = true
 quickcheck.workspace = true
 
 [features]
-default = ["quickcheck"]
+default = ["quickcheck", "kociemba"]
+kociemba = []
 lut_heuristic = ["dep:nybbles", "dep:dirs"]
 quickcheck = ["dep:quickcheck"]

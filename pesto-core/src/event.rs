@@ -56,6 +56,13 @@ impl MaybeCustomEvent {
             Self::Unofficial(event) => event.id,
         }
     }
+
+    pub fn gen_scramble(&self, rng: &mut impl rand::Rng) -> Option<String> {
+        Some(match self {
+            Self::Official(event) => norcina::gen_scramble(*event, rng).to_string(),
+            Self::Unofficial(event) => norcina::gen_scramble(event.scramble_type?, rng).to_string(),
+        })
+    }
 }
 
 impl Default for MaybeCustomEvent {
