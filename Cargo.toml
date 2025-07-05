@@ -19,6 +19,7 @@ enum_dispatch = "0.3.13"
 # Dev dependencies
 insta = { version = "1.43.1", default-features = false, features = ["ron"] }
 quickcheck = "1.0.3"
+criterion = "0.6"
 
 # For insta
 [profile.dev.package]

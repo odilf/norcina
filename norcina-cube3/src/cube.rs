@@ -28,8 +28,6 @@ impl Cube {
         let corner_swap_parity = Corner::count_swaps(corners) % 2;
         let edge_swap_parity = Edge::count_swaps(edges) % 2;
 
-        dbg!(corner_swap_parity, edge_swap_parity);
-
         if corner_swap_parity != edge_swap_parity {
             // TODO: Could we always swap the same two arbtirary pieces, or
             // would that stop it from being uniform distribution?

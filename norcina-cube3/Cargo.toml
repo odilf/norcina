@@ -16,9 +16,14 @@ pathfinding.workspace = true
 [dev-dependencies]
 insta.workspace = true
 quickcheck.workspace = true
+criterion = { workspace = true, features = ["html_reports"] }
 
 [features]
 default = ["quickcheck", "kociemba"]
 kociemba = []
 lut_heuristic = ["dep:nybbles", "dep:dirs"]
 quickcheck = ["dep:quickcheck"]
+
+[[bench]]
+name = "criterion"
+harness = false

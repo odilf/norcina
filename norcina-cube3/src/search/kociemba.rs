@@ -1,3 +1,10 @@
+//! Implementation of Kociemba's algorithm.
+//!
+//! # Resources
+//! - Kociemba's webpage: https://web.archive.org/web/20150226041111/http://kociemba.org/cube.htm
+//! - Prunte table in more detail: https://cube20.org/src/phase1prune.pdf
+//! - Prune table reference implementation: https://qiita.com/7y2n/items/55abb991a45ade2afa28
+
 use super::SearchSolution;
 use crate::{Cube, Move, search::search_idastar};
 use norcina_cube_n::{math::Axis, piece::edge::EdgePosition};
@@ -10,11 +17,13 @@ pub const G1_MOVES: [Move; 10] = {
 
 pub fn solve(cube: Cube) -> SearchSolution {
     let prune_table = PruneTable::load_or_generate();
+    solve_with_table(cube, &prune_table)
+}
 
+pub fn solve_with_table(cube: Cube, prune_table: &PruneTable) -> SearchSolution {
     let phase1_sol = solve_to_g1(cube, &prune_table);
     debug_assert!(is_in_g1(phase1_sol.final_state()));
     let phase2_sol = solve_from_g1(phase1_sol.final_state(), &prune_table);
-
     phase1_sol.concat(phase2_sol)
 }
 

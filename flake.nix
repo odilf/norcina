@@ -47,6 +47,7 @@
               pkgs.cargo-nextest
               pkgs.sqlite
               pkgs.cargo-flamegraph
+              pkgs.gnuplot
             ];
           };
         };

@@ -6,6 +6,7 @@ pub use alg::algs;
 mod tests {
     pub use super::*;
     use crate::cube::Cube;
+    use norcina_core::mov::InvertibleMove;
     use norcina_cube_n::{
         alg,
         math::Face,
@@ -43,7 +44,7 @@ mod tests {
         }
 
         fn move_and_reverse_identity(cube: Cube, mov: Move) -> bool {
-            cube.mov_single(mov).mov_single(mov.reverse()) == cube
+            cube.mov_single(mov).mov_single(mov.inverse()) == cube
         }
     }
 

@@ -12,5 +12,11 @@ pub trait InvertibleMove: Move {
 }
 
 #[enum_dispatch]
+pub trait RandomMove: Move {
+    /// Generates a random move.
+    fn random(rng: &mut impl rand::Rng) -> Self;
+}
+
+#[enum_dispatch]
 pub trait DisplayMove: Move + fmt::Display {}
 impl<M: Move + fmt::Display> DisplayMove for M {}

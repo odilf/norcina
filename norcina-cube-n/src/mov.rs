@@ -121,6 +121,13 @@ impl norcina_core::mov::InvertibleMove for Move {
         Self::new(self.face(), self.amount().reverse())
     }
 }
+impl norcina_core::mov::RandomMove for Move {
+    fn random(rng: &mut impl rand::Rng) -> Self {
+        let amount = [Amount::Single, Amount::Double, Amount::Reverse][rng.random_range(0..3)];
+        let face = [Face::R, Face::U, Face::F, Face::L, Face::D, Face::B][rng.random_range(0..6)];
+        Self::new(face, amount)
+    }
+}
 
 pub mod moves {
     macro_rules! generate_moves {

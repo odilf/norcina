@@ -4,7 +4,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use crate::mov::InvertibleMove;
+use crate::mov::{InvertibleMove, RandomMove};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Alg<M> {
@@ -28,6 +28,25 @@ impl<M> Alg<M> {
     {
         self.reverse();
         self
+    }
+
+    pub fn random(len: usize, rng: &mut impl rand::Rng) -> Self
+    where
+        M: RandomMove,
+    {
+        Self {
+            moves: std::iter::repeat_with(|| M::random(rng))
+                .take(len)
+                .collect(),
+        }
+    }
+}
+
+impl<M> IntoIterator for Alg<M> {
+    type Item = M;
+    type IntoIter = std::vec::IntoIter<M>;
+    fn into_iter(self) -> Self::IntoIter {
+        self.moves.into_iter()
     }
 }
 
