@@ -1,13 +1,14 @@
 //! Implementation of Kociemba's algorithm.
 //!
 //! # Resources
-//! - Kociemba's webpage: https://web.archive.org/web/20150226041111/http://kociemba.org/cube.htm
-//! - Prunte table in more detail: https://cube20.org/src/phase1prune.pdf
-//! - Prune table reference implementation: https://qiita.com/7y2n/items/55abb991a45ade2afa28
+//! - Kociemba's webpage: <https://web.archive.org/web/20150226041111/http://kociemba.org/cube.htm>
+//! - Prunte table in more detail: <https://cube20.org/src/phase1prune.pdf>
+//! - Prune table reference implementation: <https://qiita.com/7y2n/items/55abb991a45ade2afa28>
 
 use super::SearchSolution;
 use crate::{Cube, Move, search::search_idastar};
-use norcina_cube_n::{math::Axis, piece::edge::EdgePosition};
+use norcina_core::types::Axis;
+use norcina_cube_n::piece::edge::EdgePosition;
 
 /// Moves that stay in G1.
 pub const G1_MOVES: [Move; 10] = {

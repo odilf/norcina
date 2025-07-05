@@ -958,6 +958,7 @@ dependencies = [
  "norcina-core",
  "norcina-cube-n",
  "norcina-cube3",
+ "norcina-pyraminx",
  "rand 0.9.1",
 ]
 
@@ -966,6 +967,7 @@ name = "norcina-core"
 version = "0.1.0"
 dependencies = [
  "enum_dispatch",
+ "quickcheck",
  "rand 0.9.1",
 ]
 
@@ -992,6 +994,16 @@ dependencies = [
  "pathfinding",
  "quickcheck",
  "rand 0.9.1",
+]
+
+[[package]]
+name = "norcina-pyraminx"
+version = "0.1.0"
+dependencies = [
+ "insta",
+ "norcina-core",
+ "owo-colors",
+ "quickcheck",
 ]
 
 [[package]]

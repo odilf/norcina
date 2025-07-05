@@ -4,7 +4,9 @@ members = [
   "norcina-core",
   "norcina-cube-n",
   "norcina-cube3",
-  "pesto", "pesto-core",
+  "norcina-pyraminx",
+  "pesto",
+  "pesto-core",
   "pesto-term",
 ]
 resolver = "3"

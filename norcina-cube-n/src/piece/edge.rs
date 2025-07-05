@@ -1,10 +1,10 @@
-use std::{array, fmt, mem::transmute};
-
 use crate::{
     Sticker,
-    math::{Axis, Direction, Face},
+    face::Face,
     mov::{Amount, Move},
 };
+use norcina_core::types::{Axis, Direction};
+use std::{array, fmt, mem::transmute};
 
 #[repr(transparent)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

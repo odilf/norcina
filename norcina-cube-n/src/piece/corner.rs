@@ -1,8 +1,9 @@
 use crate::{
     Sticker,
-    math::{Axis, Direction, Face},
+    face::Face,
     mov::{Amount, Move},
 };
+use norcina_core::types::{Axis, Direction, Orientation3};
 use std::{array, fmt, mem::transmute};
 
 #[repr(transparent)]
@@ -30,16 +31,19 @@ impl Corner {
 
     pub const ORIENTATION_AXIS: Axis = Axis::Y;
 
+    /// The [x-axis](Axis::X) direction of the piece's [original position](Self::position).
     #[inline]
     pub const fn x(self) -> Direction {
         Direction::from_bool(self.data & 0b001 != 0)
     }
 
+    /// The [y-axis](Axis::Y) direction of the piece's [original position](Self::position).
     #[inline]
     pub const fn y(self) -> Direction {
         Direction::from_bool(self.data & 0b010 != 0)
     }
 
+    /// The [z-axis](Axis::Z) direction of the piece's [original position](Self::position).
     #[inline]
     pub const fn z(self) -> Direction {
         Direction::from_bool(self.data & 0b100 != 0)
@@ -51,17 +55,22 @@ impl Corner {
     /// In other words, every time you rotate a twist clockwise, you add one to the orientation.
     ///
     /// The orientation axis is by convention the Y axis (see [`Self::ORIENTATION_AXIS`]).
-    // TODO: This shouldn't really return an axis.
     #[inline]
-    pub const fn orientation(self) -> Axis {
+    pub const fn orientation(self) -> Orientation3 {
         let v = (self.data >> 3) & 0b11;
         debug_assert!(v < 3);
         // SAFETY: orientation bits are guaranteed to be either 0, 1 or 2.
-        unsafe { Axis::from_u8_unchecked(v) }
+        unsafe { Orientation3::from_u8_unchecked(v) }
+    }
+
+    /// Whether the piece's original y-axis
+    #[inline]
+    pub fn is_oriented(&self) -> bool {
+        self.orientation().u8() == 0
     }
 
     #[inline]
-    pub fn set_orientation(&mut self, orientation: Axis) {
+    pub fn set_orientation(&mut self, orientation: Orientation3) {
         self.data = self.data & 0b00111 ^ (orientation.u8() << 3);
     }
 
@@ -81,19 +90,18 @@ impl Corner {
         self.direction_on_axis(face.axis()) == face.direction()
     }
 
+    /// The original position of the corner. In other words, the position the
+    /// corner would be at when it is solved.
+    ///
+    /// This encodes the stickers or the "color"s of the piece.
     #[inline]
     pub const fn position(self) -> CornerPosition {
-        // SAFETY: `CornerPosition` and `Corner` have the same single u8 layout, except the orientation bits, which
-        // we strip out.
+        // SAFETY: `CornerPosition` and `Corner` have the same single u8 layout,
+        // except the orientation bits, which we strip out.
         unsafe { transmute(self.data & 0b00111) }
     }
 
-    #[inline]
-    pub fn is_oriented(&self) -> bool {
-        self.orientation().u8() == 0
-    }
-
-    /// Returns a possible set of 8 corners.
+    /// Returns a solvable set of 8 corners.
     ///
     /// The sum of the orientations is a multiple of 3.
     pub fn random(rng: &mut impl rand::Rng) -> [Corner; 8] {
@@ -243,7 +251,7 @@ impl CornerPosition {
         self.data
     }
 
-    pub fn with_orientation(self, orientation: Axis) -> Corner {
+    pub fn with_orientation(self, orientation: Orientation3) -> Corner {
         Corner {
             data: self.data + (orientation.u8() << 3),
         }
@@ -256,6 +264,7 @@ pub fn sticker(corner: Corner, position: CornerPosition, face: Face) -> Sticker 
     // if it's 1 it means *clockwise* rotation.
     let position_parity = position.parity() as i8;
     let ppar_sign = position_parity ^ (position_parity - 1); // 0->-1, 1->1
+
     // With the position parity, we can get the orientation index of the face
     // we are inspecting (so not the actual sticker). This is the index of the
     // face that we would want to retrieve from the original piece, if it was

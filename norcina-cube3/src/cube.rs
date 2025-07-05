@@ -1,6 +1,6 @@
 use std::fmt::{self, Write as _};
 
-use norcina_cube_n::math::Face;
+use norcina_cube_n::Face;
 use norcina_cube_n::mov::Move;
 use norcina_cube_n::piece::{
     corner::{self, Corner, CornerPosition},
@@ -130,6 +130,53 @@ impl Cube {
             )
         })
     }
+
+    pub fn write(self, f: &mut fmt::Formatter<'_>, color_scheme: ColorScheme) -> fmt::Result {
+        let write = |f: &mut fmt::Formatter<'_>, sticker| {
+            write!(f, "{}", "██".color((color_scheme)(sticker)))
+        };
+
+        let pad = |f: &mut fmt::Formatter<'_>| f.write_str("      ");
+
+        for b_row in 0..3 {
+            pad(f)?;
+            for b_col in 0..3 {
+                write(f, self.sticker_at(Face::B, Face::D, b_col, b_row))?;
+            }
+            f.write_char('\n')?;
+        }
+        for u_row in 0..3 {
+            pad(f)?;
+            for u_col in 0..3 {
+                write(f, self.sticker_at(Face::U, Face::B, u_col, u_row))?;
+            }
+            f.write_char('\n')?;
+        }
+
+        for lfr_row in 0..3 {
+            for l_col in 0..3 {
+                write(f, self.sticker_at(Face::L, Face::U, l_col, lfr_row))?;
+            }
+            for f_col in 0..3 {
+                write(f, self.sticker_at(Face::F, Face::U, f_col, lfr_row))?;
+            }
+            for r_col in 0..3 {
+                write(f, self.sticker_at(Face::R, Face::U, r_col, lfr_row))?;
+            }
+
+            f.write_char('\n')?;
+        }
+
+        for d_row in 0..3 {
+            pad(f)?;
+            for d_col in 0..3 {
+                write(f, self.sticker_at(Face::D, Face::F, d_col, d_row))?;
+            }
+            f.write_char('\n')?;
+        }
+
+        Ok(())
+    }
 }
 
 pub type Sticker = Face;
@@ -181,50 +228,7 @@ impl fmt::Debug for Cube {
 
 impl fmt::Display for Cube {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let write = |f: &mut fmt::Formatter<'_>, sticker| {
-            write!(f, "{}", "██".color((DEFAULT_COLOR_SCHEME)(sticker)))
-        };
-
-        let pad = |f: &mut fmt::Formatter<'_>| f.write_str("      ");
-
-        for b_row in 0..3 {
-            pad(f)?;
-            for b_col in 0..3 {
-                write(f, self.sticker_at(Face::B, Face::D, b_col, b_row))?;
-            }
-            f.write_char('\n')?;
-        }
-        for u_row in 0..3 {
-            pad(f)?;
-            for u_col in 0..3 {
-                write(f, self.sticker_at(Face::U, Face::B, u_col, u_row))?;
-            }
-            f.write_char('\n')?;
-        }
-
-        for lfr_row in 0..3 {
-            for l_col in 0..3 {
-                write(f, self.sticker_at(Face::L, Face::U, l_col, lfr_row))?;
-            }
-            for f_col in 0..3 {
-                write(f, self.sticker_at(Face::F, Face::U, f_col, lfr_row))?;
-            }
-            for r_col in 0..3 {
-                write(f, self.sticker_at(Face::R, Face::U, r_col, lfr_row))?;
-            }
-
-            f.write_char('\n')?;
-        }
-
-        for d_row in 0..3 {
-            pad(f)?;
-            for d_col in 0..3 {
-                write(f, self.sticker_at(Face::D, Face::F, d_col, d_row))?;
-            }
-            f.write_char('\n')?;
-        }
-
-        Ok(())
+        self.write(f, DEFAULT_COLOR_SCHEME)
     }
 }
 
@@ -242,11 +246,13 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn debug_cube_insta() {
         insta::assert_debug_snapshot!(Cube::SOLVED)
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn display_cube_insta() {
         insta::assert_snapshot!(Cube::SOLVED)
     }

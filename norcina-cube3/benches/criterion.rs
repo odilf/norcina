@@ -1,4 +1,7 @@
-use criterion::{BenchmarkId, Criterion, Throughput, criterion_group, criterion_main};
+use criterion::{
+    AxisScale, BenchmarkId, Criterion, PlotConfiguration, Throughput, criterion_group,
+    criterion_main,
+};
 use norcina_cube3::{
     Alg, Cube,
     search::{kociemba, solve_manhattan},
@@ -8,6 +11,7 @@ use std::hint::black_box;
 
 fn benchmark_solve(c: &mut Criterion) {
     let mut group = c.benchmark_group(format!("Solve 3x3"));
+    group.plot_config(PlotConfiguration::default().summary_scale(AxisScale::Logarithmic));
 
     for len in [1, 3, 5, 6, 7, 8, 9] {
         if len >= 5 {

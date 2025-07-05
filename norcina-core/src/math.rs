@@ -7,23 +7,23 @@ pub const fn fac(n: usize) -> usize {
 
 /// `n` choose `m`. That is, n! / (m! * (n - m)!)
 pub const fn choose(n: usize, m: usize) -> usize {
-    fac(n) / fac(m) / fac(n - m)
+    // fac(n) / fac(m) / fac(n - m)
 
-    // let mut output = 1;
+    let mut output = 1;
 
-    // // n * (n - 1) * (n - 2) * ... * (n - m + 1)
-    // let mut i = n;
-    // while i > n - m {
-    //     output *= i;
-    //     i -= 1;
-    // }
+    // n * (n - 1) * (n - 2) * ... * (n - m + 1)
+    let mut i = 0;
+    while i < m {
+        output *= n - i;
+        i += 1;
+    }
 
-    // // m * (m - 1) * (m - 2) * ... * 1
-    // let mut i = m;
-    // while i > 1 {
-    //     output *= i;
-    //     i -= 1;
-    // }
+    // m * (m - 1) * (m - 2) * ... * 1
+    let mut i = 0;
+    while i < m {
+        output /= m - i;
+        i += 1;
+    }
 
-    // output
+    output
 }

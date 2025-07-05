@@ -1,16 +1,16 @@
 [package]
-name = "norcina-cube-n"
+name = "norcina-pyraminx"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 norcina-core = { path = "../norcina-core" }
+owo-colors.workspace = true
 quickcheck = { workspace = true, optional = true }
-rand.workspace = true
 
 [dev-dependencies]
-quickcheck.workspace = true
+insta.workspace = true
+norcina-core = { path = "../norcina-core", features = ["quickcheck"] }
 
 [features]
-default = []
 quickcheck = ["dep:quickcheck", "norcina-core/quickcheck"]

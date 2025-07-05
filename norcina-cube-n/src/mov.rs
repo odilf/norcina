@@ -1,6 +1,8 @@
 use std::{fmt, ops};
 
-use crate::math::{Axis, Direction, Face};
+use norcina_core::types::{Axis, Direction};
+
+use crate::face::Face;
 
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

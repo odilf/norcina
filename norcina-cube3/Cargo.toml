@@ -19,10 +19,10 @@ quickcheck.workspace = true
 criterion = { workspace = true, features = ["html_reports"] }
 
 [features]
-default = ["quickcheck", "kociemba"]
+default = ["kociemba"]
 kociemba = []
 lut_heuristic = ["dep:nybbles", "dep:dirs"]
-quickcheck = ["dep:quickcheck"]
+quickcheck = ["dep:quickcheck", "norcina-cube-n/quickcheck", "norcina-core/quickcheck"]
 
 [[bench]]
 name = "criterion"

@@ -5,6 +5,7 @@ use enum_dispatch::enum_dispatch;
 pub use norcina_core::*;
 pub use norcina_cube_n as cube_n;
 pub use norcina_cube3 as cube3;
+pub use norcina_pyraminx as pyraminx;
 
 #[enum_dispatch(Move, MoveDisplay)]
 pub enum DynMove {
@@ -28,7 +29,7 @@ impl fmt::Display for DynMove {
 /// - 5x5x5 Cube: 60
 /// - 6x6x6 Cube: 80
 /// - 7x7x7 Cube: 100
-/// - Megaminx: 77
+/// - Megaminx: 77 (10 + 1 rotation, 7 times)
 ///
 /// This follows [csTimer's](https://cstimer.net) conventions.
 pub fn gen_scramble(event: Event, _rng: &mut impl rand::Rng) -> Alg<DynMove> {

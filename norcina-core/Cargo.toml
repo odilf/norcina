@@ -6,3 +6,8 @@ edition = "2024"
 [dependencies]
 enum_dispatch.workspace = true
 rand.workspace = true
+quickcheck = { workspace = true, optional = true }
+
+[features]
+default = []
+quickcheck = ["dep:quickcheck"]

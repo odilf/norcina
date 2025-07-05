@@ -8,8 +8,7 @@ mod tests {
     use crate::cube::Cube;
     use norcina_core::mov::InvertibleMove;
     use norcina_cube_n::{
-        alg,
-        math::Face,
+        Face, alg,
         mov::{Amount, Move},
     };
     use quickcheck::quickcheck;
@@ -49,10 +48,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg_attr(miri, ignore)]
     fn instance_all_basic_moves() {
         for mov in Move::iter() {
-            println!("Move is {mov}");
-            insta::assert_debug_snapshot!(Cube::SOLVED.mov_single(mov))
+            insta::assert_snapshot!(format!("Move: {mov}"), Cube::SOLVED.mov_single(mov))
         }
     }
 

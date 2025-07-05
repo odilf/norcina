@@ -1,8 +1,10 @@
-//! This implementation is based on https://qiita.com/7y2n/items/55abb991a45ade2afa28
+//! This implementation is based on <https://qiita.com/7y2n/items/55abb991a45ade2afa28>
 
-use norcina_core::math::{choose, fac};
+use norcina_core::{
+    math::{choose, fac},
+    types::{Axis, Orientation3},
+};
 use norcina_cube_n::{
-    math::Axis,
     mov::Move,
     piece::{
         corner::{self, Corner},
@@ -147,13 +149,18 @@ const CORNER_ORIENTATION: Subtable<[Corner; 8]> = Subtable {
         let mut corners = Corner::SOLVED;
         let mut orientation_sum = 0;
         for corner in corners[0..7].iter_mut().rev() {
-            let orientation = Axis::from_u8((index % 3) as u8);
+            // NOTE: We cant use `Orientation3::from_u8_mod3` or similar because
+            // `index` is a `usize` that might be outside the range, so we need
+            // to _first_ take mod 3, then crop it.
+            // SAFETY: We take modulo 3 so orientation is always either 0, 1 or 2.
+            let orientation = unsafe { Orientation3::from_u8_unchecked((index % 3) as u8) };
+
             corner.set_orientation(orientation);
             index /= 3;
             orientation_sum += orientation.u8();
         }
 
-        corners[7].set_orientation(Axis::from_i8_mod3(-(orientation_sum as i8)));
+        corners[7].set_orientation(Orientation3::from_i8_mod3(-(orientation_sum as i8)));
         corners
     },
     initial: Corner::SOLVED,
@@ -191,9 +198,10 @@ const EDGE_ORIENTATION: Subtable<[Edge; 12]> = Subtable {
     apply_mov: edge::move_pieces,
 };
 
-// TODO: This is just n choose r, right?
-fn calc_combination(n: usize, r: usize) -> usize {
+// This seems faster than my const implementation? Idk why...
+fn calc_comb(n: usize, r: usize) -> usize {
     let mut output = 1;
+
     // n * (n - 1) * (n - 2) * ... * (n - r + 1)
     for i in 0..r {
         output *= n - i;
@@ -219,7 +227,7 @@ const IS_ON_Y_SLICE: Subtable<[Edge; 12]> = Subtable {
         );
         for (i, edge) in edges.iter().enumerate().rev() {
             if edge.position().normal() == Axis::Y {
-                index += calc_combination(i, remaining);
+                index += calc_comb(i, remaining);
                 remaining -= 1;
             }
         }
@@ -235,9 +243,9 @@ const IS_ON_Y_SLICE: Subtable<[Edge; 12]> = Subtable {
         let mut remaining = 4;
 
         for i in (0..12).rev() {
-            if index >= calc_combination(i, remaining) {
+            if index >= calc_comb(i, remaining) {
                 edges[i] = Edge::SOLVED[remaining + 3];
-                index -= calc_combination(i, remaining);
+                index -= calc_comb(i, remaining);
                 remaining -= 1;
             } else {
                 edges[i] = Edge::SOLVED[(i + 8 - remaining) % 12];

@@ -2,7 +2,7 @@ use core::fmt;
 
 /// Official WCA events.
 ///
-/// As shown here: https://www.worldcubeassociation.org/results/records
+/// As shown here: <https://www.worldcubeassociation.org/results/records>
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Event {
     Cube2,
@@ -28,7 +28,7 @@ pub enum Event {
 impl Event {
     /// The WCA id of the event.
     ///
-    /// As used in "https://www.worldcubeassociation.org/results/records?event_id={id}" <- here
+    /// As used in "www.worldcubeassociation.org/results/records?event_id={id}" <- here
     pub fn str_id(self) -> &'static str {
         match self {
             Self::Cube2 => "222",

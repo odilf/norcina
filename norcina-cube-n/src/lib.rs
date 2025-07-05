@@ -1,5 +1,7 @@
-pub mod math;
 pub mod mov;
 pub mod piece;
 
-pub type Sticker = math::Face;
+mod face;
+pub use face::Face;
+
+pub type Sticker = face::Face;
